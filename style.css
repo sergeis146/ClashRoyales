@@ -1,0 +1,376 @@
+/* --- Base Setup --- */
+:root {
+    --arena-grass: #799a4a;
+    --arena-dirt: #b88a4e;
+    --river-color: #4a90e2;
+    --bridge-color: #8b5a2b;
+    --player-blue: #4a90e2;
+    --enemy-red: #e54d4d;
+    --elixir-pink: #d057e1;
+    --card-bg: #ffffff;
+    --card-border: #e0e0e0;
+    --text-dark: #333;
+    --text-light: #fff;
+    
+    /* Game Dimensions */
+    --arena-width: 400px;
+    --arena-height: 700px;
+    --tower-size: 60px;
+    --king-tower-size: 70px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #222;
+    color: var(--text-dark);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* --- Game Container --- */
+#game-container {
+    position: relative;
+    width: var(--arena-width);
+    height: var(--arena-height);
+    max-width: 100vw;
+    max-height: 100vh;
+    background: var(--arena-grass);
+    border: 4px solid #3a3a3a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Arena Layout --- */
+.arena {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(10, 1fr);
+}
+
+.lane {
+    background: var(--arena-dirt);
+}
+.lane.left { grid-column: 1; grid-row: 1 / 11; }
+.lane.right { grid-column: 2; grid-row: 1 / 11; }
+
+.river {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: var(--river-color);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.bridge {
+    position: absolute;
+    top: 50%;
+    width: 50px;
+    height: 50px;
+    background: var(--bridge-color);
+    border: 4px solid #5a3a1a;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+.bridge.left { left: calc(25% - 25px); }
+.bridge.right { right: calc(25% - 25px); }
+
+/* --- Towers --- */
+.tower {
+    position: absolute;
+    width: var(--tower-size);
+    height: var(--tower-size);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    z-index: 3;
+    border-width: 4px;
+    border-style: solid;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.tower .emoji {
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+}
+
+.tower.player {
+    background: var(--player-blue);
+    border-color: #3a70c2;
+}
+.tower.enemy {
+    background: var(--enemy-red);
+    border-color: #c23a3a;
+}
+
+/* Tower Positions */
+#enemy-king {
+    width: var(--king-tower-size);
+    height: var(--king-tower-size);
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 40px;
+}
+#enemy-princess-1 { top: 90px; left: calc(25% - 30px); }
+#enemy-princess-2 { top: 90px; right: calc(25% - 30px); }
+
+#player-king {
+    width: var(--king-tower-size);
+    height: var(--king-tower-size);
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 40px;
+}
+#player-princess-1 { bottom: 90px; left: calc(25% - 30px); }
+#player-princess-2 { bottom: 90px; right: calc(25% - 30px); }
+
+/* --- Units --- */
+.unit {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    z-index: 10;
+    transition: transform 0.1s linear;
+    border-width: 3px;
+    border-style: solid;
+}
+
+.unit.player {
+    background: var(--player-blue);
+    border-color: #3a70c2;
+}
+.unit.enemy {
+    background: var(--enemy-red);
+    border-color: #c23a3a;
+}
+.unit.giant {
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+}
+
+/* Damage Flash Animation */
+.damage-flash {
+    animation: flash 0.2s 1;
+}
+@keyframes flash {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(2) invert(1); }
+    100% { filter: brightness(1); }
+}
+
+/* --- HP Bars --- */
+.hp-bar {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #111;
+}
+.hp-bar-inner {
+    width: 100%;
+    height: 100%;
+    background: #2ecc71;
+    transition: width 0.3s;
+}
+.tower .hp-bar { width: 60px; }
+.unit .hp-bar { width: 40px; }
+.enemy .hp-bar-inner { background: var(--enemy-red); }
+.player .hp-bar-inner { background: #2ecc71; }
+
+/* --- Projectiles --- */
+.projectile {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #f1c40f;
+    border-radius: 50%;
+    z-index: 50;
+    transition: transform 0.15s linear;
+    box-shadow: 0 0 5px #f1c40f;
+}
+.enemy .projectile { background: #ff8a8a; box-shadow: 0 0 5px #ff8a8a; }
+.player .projectile { background: #8adfff; box-shadow: 0 0 5px #8adfff; }
+
+/* --- Player UI (Hand & Elixir) --- */
+#player-ui {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 130px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding-bottom: 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+}
+
+/* Elixir Bar */
+#elixir-bar-container {
+    width: 300px;
+    height: 20px;
+    background: #333;
+    border-radius: 10px;
+    border: 2px solid #111;
+    margin-bottom: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+#elixir-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--elixir-pink);
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px var(--elixir-pink);
+}
+
+#elixir-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-light);
+    font-weight: 700;
+    font-size: 14px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+/* Card Hand */
+#card-hand {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.card {
+    width: 70px;
+    height: 90px;
+    background: var(--card-bg);
+    border: 3px solid var(--card-border);
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: var(--player-blue);
+}
+
+.card.disabled {
+    filter: grayscale(1) brightness(0.7);
+    cursor: not-allowed;
+    border-color: var(--card-border);
+    transform: none;
+}
+
+.card-cost {
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--elixir-pink);
+    align-self: flex-start;
+    padding: 2px 4px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 4px;
+    border: 1px solid var(--elixir-pink);
+}
+
+.card-emoji {
+    font-size: 30px;
+}
+
+.card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dark);
+    text-align: center;
+}
+
+/* --- Game Over Overlay --- */
+#game-over-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 200;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-light);
+    text-align: center;
+}
+
+#game-over-message {
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px var(--player-blue);
+}
+
+#game-over-overlay.lose #game-over-message {
+    text-shadow: 0 0 10px var(--enemy-red);
+}
+
+#restart-button {
+    padding: 12px 24px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+    background: var(--text-light);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+#restart-button:hover {
+    transform: scale(1.05);
+}

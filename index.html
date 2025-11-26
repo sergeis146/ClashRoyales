@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Clash Arena</title>
+    <!-- Using Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Link to our new CSS file -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Arena Background Elements -->
+        <div class="arena">
+            <div class="lane left"></div>
+            <div class="lane right"></div>
+        </div>
+        <div class="river"></div>
+        <div class="bridge left"></div>
+        <div class="bridge right"></div>
+
+        <!-- Towers -->
+        <div id="enemy-king" class="tower enemy"><div class="emoji">🏰</div></div>
+        <div id="enemy-princess-1" class="tower enemy"><div class="emoji">🗼</div></div>
+        <div id="enemy-princess-2" class="tower enemy"><div class="emoji">🗼</div></div>
+
+        <div id="player-king" class="tower player"><div class="emoji">🏰</div></div>
+        <div id="player-princess-1" class="tower player"><div class="emoji">🗼</div></div>
+        <div id="player-princess-2" class_name="tower player"><div class="emoji">🗼</div></div>
+
+        <!-- Unit & Projectile Container -->
+        <div id="game-world">
+            <!-- Units and projectiles will be dynamically added by game.js -->
+        </div>
+
+        <!-- Player UI -->
+        <div id="player-ui">
+            <div id="elixir-bar-container">
+                <div id="elixir-bar"></div>
+                <div id="elixir-text">0</div>
+            </div>
+            <div id="card-hand">
+                <!-- Cards will be dynamically added by game.js -->
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-overlay">
+            <div id="game-over-message">YOU WIN!</div>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Link to our new JavaScript file -->
+    <!-- 'defer' tells the browser to wait until the HTML is loaded -->
+    <script src="game.js" defer></script>
+</body>
+</html>
