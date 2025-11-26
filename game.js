@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
+    const mainMenu = document.getElementById('main-menu');
+    const startButton = document.getElementById('start-button');
     const gameContainer = document.getElementById('game-container');
     const gameWorld = document.getElementById('game-world');
     const elixirBar = document.getElementById('elixir-bar');
@@ -13,8 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Game State Variables ---
     let playerElixir = 5;
     let maxElixir = 10;
-    let elixirRegenRate = 0.05; // Elixir per game tick (approx 60 ticks/sec)
-    let gameRunning = true;
+    let elixirRegenRate = 0.05; 
+    let gameRunning = false; // Game doesn't start until menu is closed
     let units = [];
     let projectiles = [];
     let towers = [];
@@ -23,31 +25,33 @@ document.addEventListener('DOMContentLoaded', () => {
     let enemyPlayTimer = 0;
     let enemyPlayInterval = 300; // ~5 seconds
 
-    // --- NEW: Sound Engine (using Tone.js) ---
-    // We create simple synth sounds
-    const sounds = {
-        spawn: new Tone.Synth().toDestination(),
-        hit: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination(),
-        spell: new Tone.MembraneSynth().toDestination(),
-        towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination()
-    };
-    
-    // Flag to ensure audio context is started by user interaction
+    // --- Sound Engine (using Tone.js) ---
+    let sounds = {};
     let audioStarted = false;
-    document.body.addEventListener('click', async () => {
+
+    // This function will be called by the user's first click (the Start Button)
+    async function initAudio() {
         if (audioStarted) return;
-        // Check if Tone.js is loaded
-        if (typeof Tone !== 'undefined' && Tone.start) {
-            await Tone.start();
-            audioStarted = true;
-            console.log('Audio Context Started');
-        } else {
-            console.warn('Tone.js not ready or loaded.');
+        if (typeof Tone === 'undefined') {
+            console.warn("Tone.js not loaded.");
+            return;
         }
-    }, { once: true });
+        
+        await Tone.start();
+        console.log('Audio Context Started');
+        
+        // Now that Tone is started, we can create the instruments
+        sounds = {
+            spawn: new Tone.Synth().toDestination(),
+            hit: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination(),
+            spell: new Tone.MembraneSynth().toDestination(),
+            towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination()
+        };
+        audioStarted = true;
+    }
 
     function playSound(sound, note = null, duration = '8n') {
-        if (!audioStarted || typeof Tone === 'undefined') return;
+        if (!audioStarted || !sounds[sound]) return;
         try {
             if (sound === 'spawn') {
                 sounds.spawn.triggerAttackRelease(note || 'C4', duration);
@@ -192,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.damage = 15;
             this.attackCooldown = 0;
             this.targetType = 'groundAndAir';
-            this.activated = !isKingTower; // Princess towers are active by default
+            this.activated = !isKingTower; 
         }
         
         update(gameTime) {
@@ -339,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetType: 'groundAndAir'
             };
             const element = document.createElement('div');
-            // UPDATED: No more emoji, just class
             element.className = `unit ${team} knight`;
             gameWorld.appendChild(element);
             super(id, team, 300, element, x, y, stats);
@@ -363,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetType: 'groundAndAir'
             };
             const element = document.createElement('div');
-            // UPDATED: No more emoji, just class
             element.className = `unit ${team} archer`;
             gameWorld.appendChild(element);
             super(id, team, 150, element, x, y, stats);
@@ -394,7 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetType: 'building'
             };
             const element = document.createElement('div');
-            // UPDATED: No more emoji, just class
             element.className = `unit ${team} giant`;
             gameWorld.appendChild(element);
             super(id, team, 700, element, x, y, stats);
@@ -466,18 +467,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Game Setup ---
     function initGame() {
+        // Clear all game elements
         gameWorld.innerHTML = '';
         units = [];
         projectiles = [];
         towers = [];
-        playerHand = [];
-        playerDeck = [];
+        
+        // Reset game state
         gameRunning = true;
         playerElixir = 5;
         gameTime = 0;
         enemyPlayTimer = 0;
-        gameOverOverlay.style.display = 'none';
-
+        gameOverOverlay.style.display = 'none'; // Hide game over screen
+        
+        // (Re)create Towers
         towers = [
             new Tower('enemy-king', 'enemy', 2000, document.getElementById('enemy-king'), true),
             new Tower('enemy-princess-1', 'enemy', 1000, document.getElementById('enemy-princess-1')),
@@ -487,9 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
             new Tower('player-princess-2', 'player', 1000, document.getElementById('player-princess-2'))
         ];
         
-        towers.forEach(t => t.updateHPBar());
+        // Reset tower HP bars and active status
+        towers.forEach(t => {
+            t.hp = t.maxHp;
+            t.updateHPBar();
+            t.activated = !t.isKingTower;
+        });
 
-        // UPDATED: Added Fireball to the deck
+        // Setup Deck & Hand
         playerDeck = [
             cardDefinitions.knight,
             cardDefinitions.archer,
@@ -507,12 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updateCardHandUI();
-        
-        // Check if loop is already running, if so, just reset state
-        // This is a simple way to handle restart without multiple loops
-        if (gameTime === 0) {
-            gameLoop();
-        }
+        updateElixirUI();
     }
 
     // --- Card & UI Functions ---
@@ -528,7 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playerHand.forEach((cardData, index) => {
             const card = document.createElement('button');
             card.className = 'card';
-            // NEW: Added card-specific class for styling
             if (cardData.type === 'unit') {
                 card.classList.add(`card-${cardData.unitType.toLowerCase()}`);
             } else if (cardData.type === 'spell') {
@@ -554,21 +556,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         playerElixir -= cardData.cost;
         
-        // NEW: Logic to handle different card types
         if (cardData.type === 'unit') {
             const playerKing = towers.find(t => t.id === 'player-king');
             const x = playerKing.x + (Math.random() * 100 - 50);
             const y = playerKing.y - 50;
             spawnUnit(cardData.unitType, 'player', x, y);
         } else if (cardData.type === 'spell') {
-            // For now, auto-cast fireball on enemy princess tower
-            // In Phase 2, we'll let the user pick the target
             const enemyTowers = towers.filter(t => t.team === 'enemy' && !t.isKingTower && t.hp > 0);
             let target = enemyTowers[Math.floor(Math.random() * enemyTowers.length)];
             if (!target) {
-                target = towers.find(t => t.id === 'enemy-king'); // Target king if no princess towers left
+                target = towers.find(t => t.id === 'enemy-king');
             }
-            castFireball(target.x, target.y, 'player');
+            if(target) {
+                castFireball(target.x, target.y, 'player');
+            }
         }
 
         const playedCard = playerHand.splice(handIndex, 1)[0];
@@ -579,11 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateElixirUI();
     }
 
-    // --- NEW: Spell Logic ---
+    // --- Spell Logic ---
     function castFireball(x, y, team) {
         playSound('spell');
         
-        // Create visual effect
         const effect = document.createElement('div');
         effect.className = 'spell-effect';
         const containerRect = gameContainer.getBoundingClientRect();
@@ -591,9 +591,8 @@ document.addEventListener('DOMContentLoaded', () => {
         effect.style.transform = `translate(${x - (worldRect.left - containerRect.left) - 50}px, ${y - (worldRect.top - containerRect.top) - 50}px)`;
         
         gameWorld.appendChild(effect);
-        setTimeout(() => effect.remove(), 500); // Remove effect after animation
+        setTimeout(() => effect.remove(), 500); 
 
-        // Damage units in area
         const allTargets = [...units, ...towers];
         const damageRadius = 50;
         const damage = 100;
@@ -665,7 +664,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!target) {
                     target = towers.find(t => t.id === 'player-king');
                 }
-                castFireball(target.x, target.y, 'enemy');
+                if(target) {
+                     castFireball(target.x, target.y, 'enemy');
+                }
             } else {
                 spawnUnit(cardToPlay, 'enemy', x, y);
             }
@@ -685,8 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    restartButton.addEventListener('click', initGame);
-
     // --- Main Game Loop ---
     let isLoopRunning = false;
     function gameLoop() {
@@ -712,15 +711,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Start Game ---
-    // Add a small safety check to initGame
     function startGame() {
-        initGame();
+        // This is now the main entry point
+        initAudio(); // Start audio on this first click
+        mainMenu.classList.add('hidden');
+        gameContainer.classList.remove('hidden');
+        
+        initGame(); // Set up the game board
+        
         if (!isLoopRunning) {
-            gameLoop();
+            gameLoop(); // Start the game loop
         }
     }
     
-    restartButton.addEventListener('click', startGame);
-
-    startGame(); // Initial game start
+    startButton.addEventListener('click', startGame);
+    restartButton.addEventListener('click', initGame); // Restart button just re-initializes the game
 });

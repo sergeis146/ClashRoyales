@@ -9,11 +9,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     
-    <!-- Link to our new CSS file -->
+    <!-- Link to our CSS file -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
+
+    <!-- NEW: Main Menu Screen -->
+    <div id="main-menu">
+        <h1>CLASH ARENA</h1>
+        <p>A 2-Lane MOBA Demake</p>
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <!-- The Game (Hidden by default) -->
+    <div id="game-container" class="hidden">
         <!-- Arena Background Elements -->
         <div class="arena">
             <div class="lane left"></div>
@@ -55,11 +64,10 @@
         </div>
     </div>
 
-    <!-- NEW: Import Tone.js for sound effects -->
+    <!-- Import Tone.js for sound effects -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
 
-    <!-- Link to our new JavaScript file -->
-    <!-- 'defer' tells the browser to wait until the HTML is loaded -->
+    <!-- Link to our game logic -->
     <script src="game.js" defer></script>
 </body>
 </html>
