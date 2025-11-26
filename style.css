@@ -7,10 +7,12 @@
     --player-blue: #4a90e2;
     --enemy-red: #e54d4d;
     --elixir-pink: #d057e1;
-    --card-bg: #ffffff;
+    --card-bg: #4a3a2a; /* Darker wood */
     --card-border: #e0e0e0;
     --text-dark: #333;
     --text-light: #fff;
+    --font-main: 'MedievalSharp', cursive;
+    --font-ui: 'Inter', sans-serif;
     
     /* Game Dimensions */
     --arena-width: 400px;
@@ -31,7 +33,8 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    /* NEW: Using main fantasy font */
+    font-family: var(--font-main);
     background: #222;
     color: var(--text-dark);
     display: flex;
@@ -41,7 +44,7 @@ body {
     overflow: hidden;
 }
 
-/* --- NEW: Main Menu Screen --- */
+/* --- Main Menu Screen --- */
 #main-menu {
     position: absolute;
     top: 0;
@@ -59,6 +62,7 @@ body {
 }
 
 #main-menu h1 {
+    font-family: var(--font-main);
     font-size: 48px;
     font-weight: 900;
     text-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -66,12 +70,14 @@ body {
 }
 
 #main-menu p {
+    font-family: var(--font-ui);
     font-size: 18px;
     margin-bottom: 40px;
     opacity: 0.9;
 }
 
 #start-button {
+    font-family: var(--font-main);
     padding: 15px 30px;
     font-size: 20px;
     font-weight: 700;
@@ -88,8 +94,7 @@ body {
     transform: scale(1.05);
 }
 
-/* --- NEW: Hidden Class --- */
-/* This class will be toggled by JavaScript to show/hide screens */
+/* --- Hidden Class --- */
 .hidden {
     display: none !important;
 }
@@ -108,6 +113,16 @@ body {
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
+
+/* NEW: Placement Mode Cursor */
+#game-container.placement-mode {
+    cursor: crosshair;
+}
+/* NEW: Invalid Placement Cursor */
+#game-container.placement-mode.invalid {
+    cursor: no-drop;
+}
+
 
 /* --- Arena Layout --- */
 .arena {
@@ -212,49 +227,52 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 24px;
     z-index: 10;
     transition: transform 0.1s linear;
     border-width: 3px;
     border-style: solid;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
+}
+/* NEW: Unit SVGs will get their color from this */
+.unit svg {
+    width: 70%;
+    height: 70%;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
 }
 
 .unit.player {
     background-color: var(--player-blue);
     border-color: #3a70c2;
+    color: white; /* This will color the SVG */
 }
 .unit.enemy {
     background-color: var(--enemy-red);
     border-color: #c23a3a;
+    color: white; /* This will color the SVG */
 }
 
-/* Unit-specific sprites (Placeholders) */
-.unit.knight {
-    background-image: url('https://placehold.co/40x40/ffffff/000000?text=🛡️');
-}
-.unit.archer {
-    background-image: url('https://placehold.co/40x40/ffffff/000000?text=🏹');
-}
 .unit.giant {
     width: 50px;
     height: 50px;
-    background-image: url('https://placehold.co/50x50/ffffff/000000?text=🗿');
 }
 
-/* Fireball Spell Effect */
+/* --- Spell Effect (Fireball) --- */
 .spell-effect {
     position: absolute;
     width: 100px;
     height: 100px;
-    background-image: url('https://placehold.co/100x100/ff8c00/ff0000?text=💥');
-    background-size: contain;
-    border-radius: 50%;
     z-index: 150;
     animation: spell-explode 0.5s ease-out;
     opacity: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+/* NEW: Styling the SVG inside the spell */
+.spell-effect.fireball svg {
+    width: 100%;
+    height: 100%;
+    color: #ff8c00;
+    filter: drop-shadow(0 0 10px #ff0000);
 }
 
 @keyframes spell-explode {
@@ -312,7 +330,7 @@ body {
 .enemy .projectile { background: #ff8a8a; box-shadow: 0 0 5px #ff8a8a; }
 .player .projectile { background: #8adfff; box-shadow: 0 0 5px #8adfff; }
 
-/* --- Player UI (Hand & Elixir) --- */
+/* --- Player UI (Complete Overhaul) --- */
 #player-ui {
     position: absolute;
     bottom: 0;
@@ -324,9 +342,83 @@ body {
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    padding-bottom: 10px;
-    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    padding-bottom: 5px;
 }
+
+/* NEW: Card Tray Style */
+#card-tray {
+    width: 95%;
+    height: 100px;
+    background: #3a2a1a; /* Dark wood */
+    border: 4px solid #5a3a1a; /* Wood border */
+    border-bottom: none;
+    border-top-left-radius: 100% 30px;
+    border-top-right-radius: 100% 30px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.3) inset;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 10px;
+    position: relative;
+    bottom: -25px; /* Sits below the elixir bar */
+}
+
+#card-hand {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    top: -15px; /* Move cards up */
+}
+
+/* NEW: Next Card Container */
+#next-card-container {
+    position: absolute;
+    left: 10px;
+    bottom: 25px;
+    width: 60px;
+    height: 75px;
+    z-index: 101;
+}
+.next-card-label {
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    margin-bottom: 2px;
+}
+#next-card-preview {
+    width: 50px;
+    height: 65px;
+    background: #222;
+    border: 2px solid #555;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px;
+    font-family: var(--font-ui);
+}
+#next-card-preview .card-cost-small {
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--elixir-pink);
+    align-self: flex-start;
+}
+#next-card-preview .card-svg-small {
+    width: 60%;
+    height: 60%;
+    color: white;
+}
+#next-card-preview .card-name-small {
+    font-size: 8px;
+    color: white;
+}
+
 
 /* Elixir Bar */
 #elixir-bar-container {
@@ -335,9 +427,9 @@ body {
     background: #333;
     border-radius: 10px;
     border: 2px solid #111;
-    margin-bottom: 10px;
     overflow: hidden;
     position: relative;
+    z-index: 110; /* Above card tray */
 }
 
 #elixir-bar {
@@ -354,39 +446,39 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--text-light);
+    font-family: var(--font-ui);
     font-weight: 700;
     font-size: 14px;
     text-shadow: 1px 1px 2px #000;
 }
 
 /* Card Hand */
-#card-hand {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-}
-
 .card {
     width: 70px;
     height: 90px;
     background-color: var(--card-bg);
-    border: 3px solid var(--card-border);
+    border: 3px solid #c9a47a; /* Lighter wood border */
     border-radius: 8px;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 5px rgba(0,0,0,0.3);
     padding: 5px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    transition: transform 0.1s ease, border-color 0.1s ease;
-    background-size: cover;
-    background-position: center;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    color: white; /* For the SVG */
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    border-color: var(--player-blue);
+    transform: translateY(-10px);
+}
+
+/* NEW: Selected Card Style */
+.card.selected {
+    transform: translateY(-20px) scale(1.1);
+    border-color: var(--elixir-pink);
+    box-shadow: 0 8px 20px var(--elixir-pink);
 }
 
 .card.disabled {
@@ -395,34 +487,39 @@ body {
     border-color: var(--card-border);
     transform: none;
 }
-
-/* Card-specific art (Placeholders) */
-.card-knight {
-    background-image: url('https://placehold.co/70x90/a1b2c3/ffffff?text=Knight');
+.card.disabled:hover {
+    transform: none;
 }
-.card-archer {
-    background-image: url('https://placehold.co/70x90/b2a1c3/ffffff?text=Archer');
-}
-.card-giant {
-    background-image: url('https://placehold.co/70x90/c3b2a1/ffffff?text=Giant');
-}
-.card-fireball {
-    background-image: url('https://placehold.co/70x90/ff8c00/ffffff?text=Fireball');
-}
-
 
 .card-cost {
+    font-family: var(--font-ui);
     font-size: 16px;
     font-weight: 900;
     color: var(--elixir-pink);
     align-self: flex-start;
     padding: 2px 4px;
-    background: rgba(255,255,255,0.8);
+    background: rgba(0,0,0,0.6);
     border-radius: 4px;
     border: 1px solid var(--elixir-pink);
 }
 
+/* NEW: Card SVG container */
+.card-svg {
+    width: 80%;
+    height: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.card-svg svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+}
+
+
 .card-name {
+    font-family: var(--font-ui);
     font-size: 12px;
     font-weight: 600;
     color: var(--text-light);
@@ -430,6 +527,7 @@ body {
     padding: 2px 4px;
     border-radius: 4px;
     text-align: center;
+    width: 100%;
 }
 
 /* --- Game Over Overlay --- */
@@ -441,7 +539,7 @@ body {
     height: 100%;
     background: rgba(0, 0, 0, 0.75);
     z-index: 200;
-    display: none; /* Hidden by default */
+    display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -450,6 +548,7 @@ body {
 }
 
 #game-over-message {
+    font-family: var(--font-main);
     font-size: 48px;
     font-weight: 900;
     margin-bottom: 20px;
@@ -461,6 +560,7 @@ body {
 }
 
 #restart-button {
+    font-family: var(--font-main);
     padding: 12px 24px;
     font-size: 18px;
     font-weight: 600;

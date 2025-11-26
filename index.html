@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Clash Arena</title>
-    <!-- Using Inter font from Google Fonts -->
+    <!-- NEW: Using a fantasy font "MedievalSharp" and "Inter" for UI numbers -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <!-- Link to our CSS file -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- NEW: Main Menu Screen -->
+    <!-- Main Menu Screen -->
     <div id="main-menu">
         <h1>CLASH ARENA</h1>
         <p>A 2-Lane MOBA Demake</p>
@@ -48,12 +48,25 @@
 
         <!-- Player UI -->
         <div id="player-ui">
+            <!-- NEW: Next Card Preview -->
+            <div id="next-card-container">
+                <div class="next-card-label">NEXT</div>
+                <div id="next-card-preview">
+                    <!-- Next card will be shown here -->
+                </div>
+            </div>
+            
+            <!-- NEW: Curved Card Tray -->
+            <div id="card-tray">
+                <div id="card-hand">
+                    <!-- Cards will be dynamically added by game.js -->
+                </div>
+            </div>
+
+            <!-- Elixir Bar is now at the bottom -->
             <div id="elixir-bar-container">
                 <div id="elixir-bar"></div>
                 <div id="elixir-text">0</div>
-            </div>
-            <div id="card-hand">
-                <!-- Cards will be dynamically added by game.js -->
             </div>
         </div>
 

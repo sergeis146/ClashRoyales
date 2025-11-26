@@ -11,25 +11,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverOverlay = document.getElementById('game-over-overlay');
     const gameOverMessage = document.getElementById('game-over-message');
     const restartButton = document.getElementById('restart-button');
+    // NEW: Next Card UI
+    const nextCardPreview = document.getElementById('next-card-preview');
 
     // --- Game State Variables ---
     let playerElixir = 5;
     let maxElixir = 10;
-    let elixirRegenRate = 0.05; 
-    let gameRunning = false; // Game doesn't start until menu is closed
+    let elixirRegenRate = 0.0055; // SLOWED DOWN: ~1 elixir per 3 seconds
+    let gameRunning = false;
     let units = [];
     let projectiles = [];
     let towers = [];
     let unitIdCounter = 0;
     let gameTime = 0;
     let enemyPlayTimer = 0;
-    let enemyPlayInterval = 300; // ~5 seconds
+    let enemyPlayInterval = 300;
+
+    // NEW: Placement Mode State
+    let selectedCardData = null;
+    let selectedCardIndex = -1;
+    let placementMode = false;
 
     // --- Sound Engine (using Tone.js) ---
     let sounds = {};
     let audioStarted = false;
 
-    // This function will be called by the user's first click (the Start Button)
     async function initAudio() {
         if (audioStarted) return;
         if (typeof Tone === 'undefined') {
@@ -40,12 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
         await Tone.start();
         console.log('Audio Context Started');
         
-        // Now that Tone is started, we can create the instruments
         sounds = {
             spawn: new Tone.Synth().toDestination(),
             hit: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination(),
             spell: new Tone.MembraneSynth().toDestination(),
-            towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination()
+            towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination(),
+            error: new Tone.Synth({ envelope: { attack: 0.01, decay: 0.2, release: 0.2 } }).toDestination()
         };
         audioStarted = true;
     }
@@ -61,18 +67,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 sounds.spell.triggerAttackRelease('C2', '4n');
             } else if (sound === 'towerDestroy') {
                 sounds.towerDestroy.triggerAttackRelease('G1', '2n');
+            } else if (sound === 'error') {
+                sounds.error.triggerAttackRelease('C3', '8n');
             }
         } catch (e) {
             console.error("Error playing sound:", e);
         }
     }
 
+    // --- NEW: SVG Graphics Definitions ---
+    // We define these here so card definitions and unit classes can use them.
+    const SVGs = {
+        knight: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M50 10 L80 25 L80 55 L50 85 L20 55 L20 25 Z M50 20 L50 75 L70 50 L70 30 Z"></path><path fill="currentColor" d="M45 15 L55 15 L55 80 L45 80 Z" transform="rotate(0 50 50)"></path></svg>`,
+        archer: `<svg viewBox="0 0 100 100"><path fill="none" stroke="currentColor" stroke-width="8" d="M50 10 C70 30, 70 70, 50 90"></path><path fill="currentColor" d="M45 8 L55 8 L55 92 L45 92 Z"></path><path fill="currentColor" d="M50 48 L90 48 L80 43 L80 53 Z"></path></svg>`,
+        giant: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M30 70 C10 70, 10 40, 30 40 L40 40 L40 30 C40 20, 50 10, 60 10 L70 10 C80 10, 90 20, 90 30 L90 60 C90 80, 80 90, 70 90 L30 90 Z M40 60 L70 60 L70 70 L40 70 Z"></path></svg>`,
+        fireball: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M50 90 C30 90, 20 70, 30 50 C10 50, 20 20, 40 10 C50 30, 60 30, 70 10 C90 20, 100 50, 70 50 C80 70, 70 90, 50 90 Z"></path></svg>`
+    };
+
     // --- Card & Deck Definitions ---
     const cardDefinitions = {
-        knight: { name: 'Knight', cost: 3, type: 'unit', unitType: 'Knight' },
-        archer: { name: 'Archer', cost: 3, type: 'unit', unitType: 'Archer' },
-        giant: { name: 'Giant', cost: 5, type: 'unit', unitType: 'Giant' },
-        fireball: { name: 'Fireball', cost: 4, type: 'spell', spellType: 'Fireball' }
+        knight: { name: 'Knight', cost: 3, type: 'unit', unitType: 'Knight', svg: SVGs.knight },
+        archer: { name: 'Archer', cost: 3, type: 'unit', unitType: 'Archer', svg: SVGs.archer },
+        giant: { name: 'Giant', cost: 5, type: 'unit', unitType: 'Giant', svg: SVGs.giant },
+        fireball: { name: 'Fireball', cost: 4, type: 'spell', spellType: 'Fireball', svg: SVGs.fireball }
     };
     
     let playerDeck = [];
@@ -344,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const element = document.createElement('div');
             element.className = `unit ${team} knight`;
+            element.innerHTML = cardDefinitions.knight.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 300, element, x, y, stats);
         }
@@ -367,6 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const element = document.createElement('div');
             element.className = `unit ${team} archer`;
+            element.innerHTML = cardDefinitions.archer.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 150, element, x, y, stats);
         }
@@ -397,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const element = document.createElement('div');
             element.className = `unit ${team} giant`;
+            element.innerHTML = cardDefinitions.giant.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 700, element, x, y, stats);
         }
@@ -467,20 +487,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Game Setup ---
     function initGame() {
-        // Clear all game elements
         gameWorld.innerHTML = '';
         units = [];
         projectiles = [];
         towers = [];
         
-        // Reset game state
         gameRunning = true;
         playerElixir = 5;
         gameTime = 0;
         enemyPlayTimer = 0;
-        gameOverOverlay.style.display = 'none'; // Hide game over screen
+        gameOverOverlay.style.display = 'none';
         
-        // (Re)create Towers
+        // NEW: Reset placement mode
+        resetPlacement();
+
         towers = [
             new Tower('enemy-king', 'enemy', 2000, document.getElementById('enemy-king'), true),
             new Tower('enemy-princess-1', 'enemy', 1000, document.getElementById('enemy-princess-1')),
@@ -490,14 +510,12 @@ document.addEventListener('DOMContentLoaded', () => {
             new Tower('player-princess-2', 'player', 1000, document.getElementById('player-princess-2'))
         ];
         
-        // Reset tower HP bars and active status
         towers.forEach(t => {
             t.hp = t.maxHp;
             t.updateHPBar();
             t.activated = !t.isKingTower;
         });
 
-        // Setup Deck & Hand
         playerDeck = [
             cardDefinitions.knight,
             cardDefinitions.archer,
@@ -516,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateCardHandUI();
         updateElixirUI();
+        updateNextCardUI();
     }
 
     // --- Card & UI Functions ---
@@ -531,14 +550,17 @@ document.addEventListener('DOMContentLoaded', () => {
         playerHand.forEach((cardData, index) => {
             const card = document.createElement('button');
             card.className = 'card';
-            if (cardData.type === 'unit') {
-                card.classList.add(`card-${cardData.unitType.toLowerCase()}`);
-            } else if (cardData.type === 'spell') {
-                card.classList.add(`card-${cardData.spellType.toLowerCase()}`);
+            
+            // Add selected class
+            if (index === selectedCardIndex) {
+                card.classList.add('selected');
             }
 
             card.innerHTML = `
                 <div class="card-cost">${cardData.cost}</div>
+                <div class="card-svg">
+                    ${cardData.svg}
+                </div>
                 <div class="card-name">${cardData.name}</div>
             `;
             
@@ -546,46 +568,107 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.classList.add('disabled');
             }
             
-            card.addEventListener('click', () => playCard(cardData, index));
+            card.addEventListener('click', () => selectCard(cardData, index));
             cardHandContainer.appendChild(card);
         });
     }
 
-    function playCard(cardData, handIndex) {
-        if (playerElixir < cardData.cost || !gameRunning) return;
+    // NEW: Update Next Card UI
+    function updateNextCardUI() {
+        if (playerDeck.length > 0) {
+            const nextCard = playerDeck[0];
+            nextCardPreview.innerHTML = `
+                <div class="card-cost-small">${nextCard.cost}</div>
+                <div class="card-svg-small">${nextCard.svg}</div>
+                <div class="card-name-small">${nextCard.name}</div>
+            `;
+        } else {
+            nextCardPreview.innerHTML = '';
+        }
+    }
 
-        playerElixir -= cardData.cost;
-        
-        if (cardData.type === 'unit') {
-            const playerKing = towers.find(t => t.id === 'player-king');
-            const x = playerKing.x + (Math.random() * 100 - 50);
-            const y = playerKing.y - 50;
-            spawnUnit(cardData.unitType, 'player', x, y);
-        } else if (cardData.type === 'spell') {
-            const enemyTowers = towers.filter(t => t.team === 'enemy' && !t.isKingTower && t.hp > 0);
-            let target = enemyTowers[Math.floor(Math.random() * enemyTowers.length)];
-            if (!target) {
-                target = towers.find(t => t.id === 'enemy-king');
-            }
-            if(target) {
-                castFireball(target.x, target.y, 'player');
-            }
+    // NEW: selectCard (replaces old playCard)
+    function selectCard(cardData, index) {
+        if (playerElixir < cardData.cost || !gameRunning) {
+            playSound('error', 'C3');
+            return;
         }
 
-        const playedCard = playerHand.splice(handIndex, 1)[0];
+        // Deselect if clicking the same card
+        if (index === selectedCardIndex) {
+            resetPlacement();
+            return;
+        }
+
+        placementMode = true;
+        selectedCardData = cardData;
+        selectedCardIndex = index;
+        gameContainer.classList.add('placement-mode');
+        
+        updateCardHandUI(); // Re-render hand to show selection
+    }
+
+    // NEW: resetPlacement
+    function resetPlacement() {
+        placementMode = false;
+        selectedCardData = null;
+        selectedCardIndex = -1;
+        gameContainer.classList.remove('placement-mode');
+        gameContainer.classList.remove('invalid');
+        updateCardHandUI(); // Re-render hand to remove selection
+    }
+
+    // NEW: handlePlacement (click on arena)
+    function handlePlacement(e) {
+        if (!placementMode || !selectedCardData) return;
+
+        const rect = gameContainer.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // --- Placement Validation ---
+        const riverY = gameContainer.offsetHeight / 2;
+        if (y < riverY) {
+            // Invalid placement (enemy side)
+            playSound('error', 'C3');
+            gameContainer.classList.add('invalid');
+            setTimeout(() => gameContainer.classList.remove('invalid'), 200);
+            return;
+        }
+
+        // --- Valid Placement, Play Card ---
+        playerElixir -= selectedCardData.cost;
+        
+        if (selectedCardData.type === 'unit') {
+            spawnUnit(selectedCardData.unitType, 'player', x, y);
+        } else if (selectedCardData.type === 'spell') {
+            castFireball(x, y, 'player');
+        }
+
+        // Cycle card
+        const playedCard = playerHand.splice(selectedCardIndex, 1)[0];
         playerDeck.push(playedCard);
         drawCard();
         
-        updateCardHandUI();
+        // Reset state
+        resetPlacement();
+        
+        // Update UI
         updateElixirUI();
+        updateNextCardUI();
     }
+    
+    // Add the new placement listener
+    gameContainer.addEventListener('click', handlePlacement);
+
 
     // --- Spell Logic ---
     function castFireball(x, y, team) {
         playSound('spell');
         
         const effect = document.createElement('div');
-        effect.className = 'spell-effect';
+        effect.className = 'spell-effect fireball';
+        effect.innerHTML = cardDefinitions.fireball.svg; // Use SVG
         const containerRect = gameContainer.getBoundingClientRect();
         const worldRect = gameWorld.getBoundingClientRect();
         effect.style.transform = `translate(${x - (worldRect.left - containerRect.left) - 50}px, ${y - (worldRect.top - containerRect.top) - 50}px)`;
@@ -636,6 +719,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const cards = cardHandContainer.querySelectorAll('.card');
         cards.forEach((card, index) => {
+            // Don't disable the selected card, just check elixir
+            if (index === selectedCardIndex) return; 
+            
             const cardData = playerHand[index];
             if (cardData && playerElixir < cardData.cost) {
                 card.classList.add('disabled');
@@ -712,7 +798,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Start Game ---
     function startGame() {
-        // This is now the main entry point
         initAudio(); // Start audio on this first click
         mainMenu.classList.add('hidden');
         gameContainer.classList.remove('hidden');
@@ -725,5 +810,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     startButton.addEventListener('click', startGame);
-    restartButton.addEventListener('click', initGame); // Restart button just re-initializes the game
+    restartButton.addEventListener('click', initGame);
 });
