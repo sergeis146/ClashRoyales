@@ -152,8 +152,8 @@ body {
 /* --- Units --- */
 .unit {
     position: absolute;
-    width: 36px;
-    height: 36px;
+    width: 40px; /* Slightly larger for sprites */
+    height: 40px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -163,21 +163,54 @@ body {
     transition: transform 0.1s linear;
     border-width: 3px;
     border-style: solid;
+    /* NEW: Sprites will be background images */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .unit.player {
-    background: var(--player-blue);
+    background-color: var(--player-blue);
     border-color: #3a70c2;
 }
 .unit.enemy {
-    background: var(--enemy-red);
+    background-color: var(--enemy-red);
     border-color: #c23a3a;
 }
-.unit.giant {
-    width: 44px;
-    height: 44px;
-    font-size: 28px;
+
+/* NEW: Unit-specific sprites */
+/* You would replace these placehold.co URLs with your real .png files */
+.unit.knight {
+    background-image: url('https://placehold.co/40x40/ffffff/000000?text=🛡️');
 }
+.unit.archer {
+    background-image: url('https://placehold.co/40x40/ffffff/000000?text=🏹');
+}
+.unit.giant {
+    width: 50px; /* Giant is bigger */
+    height: 50px;
+    background-image: url('https://placehold.co/50x50/ffffff/000000?text=🗿');
+}
+
+/* NEW: Fireball Spell Effect */
+.spell-effect {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background-image: url('https://placehold.co/100x100/ff8c00/ff0000?text=💥');
+    background-size: contain;
+    border-radius: 50%;
+    z-index: 150;
+    animation: spell-explode 0.5s ease-out;
+    opacity: 0;
+}
+
+@keyframes spell-explode {
+    0% { transform: scale(0.2); opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
 
 /* Damage Flash Animation */
 .damage-flash {
@@ -284,7 +317,7 @@ body {
 .card {
     width: 70px;
     height: 90px;
-    background: var(--card-bg);
+    background-color: var(--card-bg);
     border: 3px solid var(--card-border);
     border-radius: 8px;
     cursor: pointer;
@@ -295,6 +328,9 @@ body {
     align-items: center;
     justify-content: space-between;
     transition: transform 0.1s ease, border-color 0.1s ease;
+    /* NEW: Card art will be background images */
+    background-size: cover; /* This will crop the image nicely */
+    background-position: center;
 }
 
 .card:hover {
@@ -309,25 +345,45 @@ body {
     transform: none;
 }
 
+/* NEW: Card-specific art */
+/* Replace these with your real card art */
+.card-knight {
+    background-image: url('https://placehold.co/70x90/a1b2c3/ffffff?text=Knight');
+}
+.card-archer {
+    background-image: url('https://placehold.co/70x90/b2a1c3/ffffff?text=Archer');
+}
+.card-giant {
+    background-image: url('https://placehold.co/70x90/c3b2a1/ffffff?text=Giant');
+}
+.card-fireball {
+    background-image: url('https://placehold.co/70x90/ff8c00/ffffff?text=Fireball');
+}
+
+
 .card-cost {
     font-size: 16px;
     font-weight: 900;
     color: var(--elixir-pink);
     align-self: flex-start;
     padding: 2px 4px;
-    background: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.8);
     border-radius: 4px;
     border: 1px solid var(--elixir-pink);
 }
 
 .card-emoji {
-    font-size: 30px;
+    /* We don't use this anymore, but it's fine to leave */
+    font-size: 30px; 
 }
 
 .card-name {
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-dark);
+    color: var(--text-light);
+    background: rgba(0,0,0,0.6);
+    padding: 2px 4px;
+    border-radius: 4px;
     text-align: center;
 }
 

@@ -23,11 +23,52 @@ document.addEventListener('DOMContentLoaded', () => {
     let enemyPlayTimer = 0;
     let enemyPlayInterval = 300; // ~5 seconds
 
+    // --- NEW: Sound Engine (using Tone.js) ---
+    // We create simple synth sounds
+    const sounds = {
+        spawn: new Tone.Synth().toDestination(),
+        hit: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination(),
+        spell: new Tone.MembraneSynth().toDestination(),
+        towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination()
+    };
+    
+    // Flag to ensure audio context is started by user interaction
+    let audioStarted = false;
+    document.body.addEventListener('click', async () => {
+        if (audioStarted) return;
+        // Check if Tone.js is loaded
+        if (typeof Tone !== 'undefined' && Tone.start) {
+            await Tone.start();
+            audioStarted = true;
+            console.log('Audio Context Started');
+        } else {
+            console.warn('Tone.js not ready or loaded.');
+        }
+    }, { once: true });
+
+    function playSound(sound, note = null, duration = '8n') {
+        if (!audioStarted || typeof Tone === 'undefined') return;
+        try {
+            if (sound === 'spawn') {
+                sounds.spawn.triggerAttackRelease(note || 'C4', duration);
+            } else if (sound === 'hit') {
+                sounds.hit.triggerAttackRelease(duration);
+            } else if (sound === 'spell') {
+                sounds.spell.triggerAttackRelease('C2', '4n');
+            } else if (sound === 'towerDestroy') {
+                sounds.towerDestroy.triggerAttackRelease('G1', '2n');
+            }
+        } catch (e) {
+            console.error("Error playing sound:", e);
+        }
+    }
+
     // --- Card & Deck Definitions ---
     const cardDefinitions = {
-        knight: { name: 'Knight', emoji: '🛡️', cost: 3, type: 'Knight' },
-        archer: { name: 'Archer', emoji: '🏹', cost: 3, type: 'Archer' },
-        giant: { name: 'Giant', emoji: '🗿', cost: 5, type: 'Giant' },
+        knight: { name: 'Knight', cost: 3, type: 'unit', unitType: 'Knight' },
+        archer: { name: 'Archer', cost: 3, type: 'unit', unitType: 'Archer' },
+        giant: { name: 'Giant', cost: 5, type: 'unit', unitType: 'Giant' },
+        fireball: { name: 'Fireball', cost: 4, type: 'spell', spellType: 'Fireball' }
     };
     
     let playerDeck = [];
@@ -41,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getRect = (element) => {
-        // This function now needs to account for the game container's offset
         const containerRect = gameContainer.getBoundingClientRect();
         const rect = element.getBoundingClientRect();
         return {
@@ -62,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element = element;
             this.target = null;
             
-            // Create HP bar
             this.hpBarElement = document.createElement('div');
             this.hpBarElement.className = 'hp-bar';
             this.hpBarInner = document.createElement('div');
@@ -81,11 +120,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         takeDamage(amount) {
-            if (this.hp <= 0) return; // Already dead
+            if (this.hp <= 0) return;
             this.hp -= amount;
             this.updateHPBar();
+            playSound('hit');
             
-            // Add damage flash effect
             this.element.classList.add('damage-flash');
             setTimeout(() => {
                 this.element.classList.remove('damage-flash');
@@ -100,14 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element.remove();
             
             if (this instanceof Tower) {
-                // If a Princess tower dies, remove it from the towers list
+                playSound('towerDestroy');
                 towers = towers.filter(t => t.id !== this.id);
-                // Check for game over if a King tower dies
                 if (this.isKingTower) {
                     endGame(this.team === 'player' ? 'enemy' : 'player');
                 }
             } else {
-                // If a unit dies, remove it from the units list
                 units = units.filter(u => u.id !== this.id);
             }
         }
@@ -118,18 +155,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const entity of allEntities) {
                 if (entity.team !== this.team && entity.hp > 0) {
-                    
-                    // Target-finding logic
-                    // Giants ONLY target towers.
                     if (this.targetType === 'building') {
                         if (!(entity instanceof Tower)) {
-                            continue; // Giant skips non-towers
+                            continue; 
                         }
                     }
-                    // Knights/Archers target nearest enemy (unit or tower).
-                    // (No special rule needed, they attack anything)
-
-
                     const distance = getDistance(this, entity);
                     if (distance < minDistance && distance < this.aggroRange) {
                         minDistance = distance;
@@ -141,13 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updatePosition() {
-            // Update internal x/y from DOM element
             const rect = getRect(this.element);
             this.x = rect.left + rect.width / 2;
             this.y = rect.top + rect.height / 2;
         }
 
-        // Base update method, to be overridden
         update() {
             this.updatePosition();
         }
@@ -160,40 +188,30 @@ document.addEventListener('DOMContentLoaded', () => {
             this.isKingTower = isKingTower;
             this.attackRange = 150;
             this.aggroRange = 150;
-            this.attackSpeed = 1000; // ms
+            this.attackSpeed = 1000;
             this.damage = 15;
             this.attackCooldown = 0;
-            this.targetType = 'groundAndAir'; // Towers hit everything
-            this.activated = false;
+            this.targetType = 'groundAndAir';
+            this.activated = !isKingTower; // Princess towers are active by default
         }
         
         update(gameTime) {
             super.update();
             if (this.hp <= 0) return;
             
-            // King tower activation
             if (this.isKingTower && !this.activated) {
-                // Check if any friendly princess tower is destroyed
                 const princessTowers = towers.filter(t => t.team === this.team && !t.isKingTower);
-                if (princessTowers.length < 2) {
-                    this.activated = true;
-                }
-                // Check if King tower took damage
-                if (this.hp < this.maxHp) {
-                    this.activated = true;
-                }
-                
-                if(!this.activated) return; // Don't attack if not activated
+                if (princessTowers.length < 2) this.activated = true;
+                if (this.hp < this.maxHp) this.activated = true;
+                if (!this.activated) return;
             }
             
-            // Find target if current one is dead or out of range
             if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.attackRange) {
-                this.findTarget(units); // Towers only target units
+                this.findTarget(units);
             }
             
-            // Attack logic
             if (this.attackCooldown > 0) {
-                this.attackCooldown -= 1000 / 60; // Reduce by milliseconds per frame
+                this.attackCooldown -= 1000 / 60;
             }
 
             if (this.target && this.attackCooldown <= 0) {
@@ -220,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         attack() {
             if (!this.target) return;
-            
             const projectile = new Projectile(
                 `proj_${unitIdCounter++}`,
                 this.team,
@@ -238,64 +255,49 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(id, team, hp, element, x, y, stats) {
             super(id, team, hp, element);
             
-            // We set position relative to gameWorld
             const containerRect = gameContainer.getBoundingClientRect();
             const worldRect = gameWorld.getBoundingClientRect();
             const initialX = x - (worldRect.left - containerRect.left) - (element.offsetWidth / 2);
             const initialY = y - (worldRect.top - containerRect.top) - (element.offsetHeight / 2);
 
             this.element.style.transform = `translate(${initialX}px, ${initialY}px)`;
-            
             this.x = x;
             this.y = y;
-            
             this.speed = stats.speed;
             this.attackRange = stats.attackRange;
             this.aggroRange = stats.aggroRange;
             this.attackSpeed = stats.attackSpeed;
             this.damage = stats.damage;
-            this.targetType = stats.targetType; // 'groundAndAir', 'ground', 'building'
-            
+            this.targetType = stats.targetType;
             this.attackCooldown = 0;
-            this.path = null; // Used for pathfinding
         }
         
         update(gameTime) {
-            // Note: We don't call super.update() here because unit position
-            // is calculated, not read from the DOM.
             if (this.hp <= 0) return;
 
-            // Find a target
             if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.aggroRange) {
                 const allTargets = [...units, ...towers];
                 this.findTarget(allTargets);
                 
-                // If still no target, move towards enemy King Tower
                 if (!this.target) {
-                    if (this.team === 'player') {
-                        this.target = towers.find(t => t.id === 'enemy-king');
-                    } else {
-                        this.target = towers.find(t => t.id === 'player-king');
-                    }
+                    this.target = (this.team === 'player') ? 
+                        towers.find(t => t.id === 'enemy-king') : 
+                        towers.find(t => t.id === 'player-king');
                 }
             }
             
-            // Attack logic
             if (this.attackCooldown > 0) {
                 this.attackCooldown -= 1000 / 60;
             }
             
             if (this.target && this.target.hp > 0) {
                 const distance = getDistance(this, this.target);
-                
                 if (distance <= this.attackRange) {
-                    // Stop moving and attack
                     if (this.attackCooldown <= 0) {
                         this.attack();
                         this.attackCooldown = this.attackSpeed;
                     }
                 } else {
-                    // Move towards target
                     this.move();
                 }
             }
@@ -311,11 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const moveX = (dx / distance) * this.speed;
             const moveY = (dy / distance) * this.speed;
 
-            // Update internal coordinates
             this.x += moveX;
             this.y += moveY;
             
-            // Update DOM element position
             const containerRect = gameContainer.getBoundingClientRect();
             const worldRect = gameWorld.getBoundingClientRect();
             const elX = this.x - (worldRect.left - containerRect.left) - (this.element.offsetWidth / 2);
@@ -324,28 +324,24 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element.style.transform = `translate(${elX}px, ${elY}px)`;
         }
 
-        attack() {
-            // Overridden by subclasses (Knight, Archer)
-        }
+        attack() { /* Overridden by subclasses */ }
     }
 
     // --- Specific Unit Classes ---
-    
     class Knight extends Unit {
         constructor(id, team, x, y) {
             const stats = {
                 speed: 1.5,
-                attackRange: 30, // Melee
+                attackRange: 30,
                 aggroRange: 100,
                 attackSpeed: 1000,
                 damage: 30,
-                targetType: 'groundAndAir' // Hits anything
+                targetType: 'groundAndAir'
             };
             const element = document.createElement('div');
+            // UPDATED: No more emoji, just class
             element.className = `unit ${team} knight`;
-            element.innerHTML = '<div class="emoji">🛡️</div>';
             gameWorld.appendChild(element);
-            
             super(id, team, 300, element, x, y, stats);
         }
         
@@ -360,17 +356,16 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(id, team, x, y) {
             const stats = {
                 speed: 1.5,
-                attackRange: 120, // Ranged
+                attackRange: 120,
                 aggroRange: 130,
                 attackSpeed: 800,
                 damage: 15,
                 targetType: 'groundAndAir'
             };
             const element = document.createElement('div');
+            // UPDATED: No more emoji, just class
             element.className = `unit ${team} archer`;
-            element.innerHTML = '<div class="emoji">🏹</div>';
             gameWorld.appendChild(element);
-            
             super(id, team, 150, element, x, y, stats);
         }
         
@@ -391,18 +386,17 @@ document.addEventListener('DOMContentLoaded', () => {
     class Giant extends Unit {
         constructor(id, team, x, y) {
             const stats = {
-                speed: 1, // Slower
-                attackRange: 35, // Melee
+                speed: 1,
+                attackRange: 35,
                 aggroRange: 100,
                 attackSpeed: 1500,
                 damage: 50,
-                targetType: 'building' // ONLY attacks towers
+                targetType: 'building'
             };
             const element = document.createElement('div');
+            // UPDATED: No more emoji, just class
             element.className = `unit ${team} giant`;
-            element.innerHTML = '<div class="emoji">🗿</div>';
             gameWorld.appendChild(element);
-            
             super(id, team, 700, element, x, y, stats);
         }
         
@@ -426,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element = document.createElement('div');
             this.element.className = `projectile ${team}`;
             
-            // Calculate position relative to gameWorld
             const containerRect = gameContainer.getBoundingClientRect();
             const worldRect = gameWorld.getBoundingClientRect();
             const elX = this.x - (worldRect.left - containerRect.left) - 5;
@@ -450,7 +443,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Move towards target
             const dx = this.target.x - this.x;
             const dy = this.target.y - this.y;
             const speed = 8;
@@ -458,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.x += (dx / distance) * speed;
             this.y += (dy / distance) * speed;
             
-            // Update DOM element position
             const containerRect = gameContainer.getBoundingClientRect();
             const worldRect = gameWorld.getBoundingClientRect();
             const elX = this.x - (worldRect.left - containerRect.left) - 5;
@@ -475,7 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Game Setup ---
     function initGame() {
-        // Clear old game state
         gameWorld.innerHTML = '';
         units = [];
         projectiles = [];
@@ -488,12 +478,10 @@ document.addEventListener('DOMContentLoaded', () => {
         enemyPlayTimer = 0;
         gameOverOverlay.style.display = 'none';
 
-        // Create Towers
         towers = [
             new Tower('enemy-king', 'enemy', 2000, document.getElementById('enemy-king'), true),
             new Tower('enemy-princess-1', 'enemy', 1000, document.getElementById('enemy-princess-1')),
             new Tower('enemy-princess-2', 'enemy', 1000, document.getElementById('enemy-princess-2')),
-            
             new Tower('player-king', 'player', 2000, document.getElementById('player-king'), true),
             new Tower('player-princess-1', 'player', 1000, document.getElementById('player-princess-1')),
             new Tower('player-princess-2', 'player', 1000, document.getElementById('player-princess-2'))
@@ -501,26 +489,30 @@ document.addEventListener('DOMContentLoaded', () => {
         
         towers.forEach(t => t.updateHPBar());
 
-        // Setup Deck & Hand
+        // UPDATED: Added Fireball to the deck
         playerDeck = [
             cardDefinitions.knight,
             cardDefinitions.archer,
             cardDefinitions.giant,
-            cardDefinitions.knight,
-            cardDefinitions.archer,
+            cardDefinitions.fireball,
             cardDefinitions.knight,
             cardDefinitions.archer,
             cardDefinitions.giant,
-        ].sort(() => Math.random() - 0.5); // Shuffle deck
+            cardDefinitions.fireball,
+        ].sort(() => Math.random() - 0.5);
         
+        playerHand = [];
         for(let i = 0; i < 4; i++) {
             drawCard();
         }
         
         updateCardHandUI();
         
-        // Start game loop
-        gameLoop();
+        // Check if loop is already running, if so, just reset state
+        // This is a simple way to handle restart without multiple loops
+        if (gameTime === 0) {
+            gameLoop();
+        }
     }
 
     // --- Card & UI Functions ---
@@ -533,13 +525,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateCardHandUI() {
         cardHandContainer.innerHTML = '';
-        
         playerHand.forEach((cardData, index) => {
             const card = document.createElement('button');
             card.className = 'card';
+            // NEW: Added card-specific class for styling
+            if (cardData.type === 'unit') {
+                card.classList.add(`card-${cardData.unitType.toLowerCase()}`);
+            } else if (cardData.type === 'spell') {
+                card.classList.add(`card-${cardData.spellType.toLowerCase()}`);
+            }
+
             card.innerHTML = `
                 <div class="card-cost">${cardData.cost}</div>
-                <div class="card-emoji">${cardData.emoji}</div>
                 <div class="card-name">${cardData.name}</div>
             `;
             
@@ -557,21 +554,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
         playerElixir -= cardData.cost;
         
-        // Spawn unit at a random-ish position near player king tower
-        const containerRect = gameContainer.getBoundingClientRect();
-        const playerKing = towers.find(t => t.id === 'player-king');
-        const x = playerKing.x + (Math.random() * 100 - 50);
-        const y = playerKing.y - 50; // Spawn in front of king
-        
-        spawnUnit(cardData.type, 'player', x, y);
+        // NEW: Logic to handle different card types
+        if (cardData.type === 'unit') {
+            const playerKing = towers.find(t => t.id === 'player-king');
+            const x = playerKing.x + (Math.random() * 100 - 50);
+            const y = playerKing.y - 50;
+            spawnUnit(cardData.unitType, 'player', x, y);
+        } else if (cardData.type === 'spell') {
+            // For now, auto-cast fireball on enemy princess tower
+            // In Phase 2, we'll let the user pick the target
+            const enemyTowers = towers.filter(t => t.team === 'enemy' && !t.isKingTower && t.hp > 0);
+            let target = enemyTowers[Math.floor(Math.random() * enemyTowers.length)];
+            if (!target) {
+                target = towers.find(t => t.id === 'enemy-king'); // Target king if no princess towers left
+            }
+            castFireball(target.x, target.y, 'player');
+        }
 
-        // Cycle card
         const playedCard = playerHand.splice(handIndex, 1)[0];
         playerDeck.push(playedCard);
         drawCard();
         
         updateCardHandUI();
         updateElixirUI();
+    }
+
+    // --- NEW: Spell Logic ---
+    function castFireball(x, y, team) {
+        playSound('spell');
+        
+        // Create visual effect
+        const effect = document.createElement('div');
+        effect.className = 'spell-effect';
+        const containerRect = gameContainer.getBoundingClientRect();
+        const worldRect = gameWorld.getBoundingClientRect();
+        effect.style.transform = `translate(${x - (worldRect.left - containerRect.left) - 50}px, ${y - (worldRect.top - containerRect.top) - 50}px)`;
+        
+        gameWorld.appendChild(effect);
+        setTimeout(() => effect.remove(), 500); // Remove effect after animation
+
+        // Damage units in area
+        const allTargets = [...units, ...towers];
+        const damageRadius = 50;
+        const damage = 100;
+        
+        allTargets.forEach(target => {
+            if (target.team !== team && target.hp > 0) {
+                const distance = getDistance({x, y}, target);
+                if (distance <= damageRadius) {
+                    target.takeDamage(damage);
+                }
+            }
+        });
     }
     
     function spawnUnit(type, team, x, y) {
@@ -580,12 +614,15 @@ document.addEventListener('DOMContentLoaded', () => {
         switch(type) {
             case 'Knight':
                 unit = new Knight(id, team, x, y);
+                playSound('spawn', 'C4');
                 break;
             case 'Archer':
                 unit = new Archer(id, team, x, y);
+                playSound('spawn', 'E4');
                 break;
             case 'Giant':
                 unit = new Giant(id, team, x, y);
+                playSound('spawn', 'G3');
                 break;
         }
         if(unit) {
@@ -598,7 +635,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elixirText.textContent = elixirInt;
         elixirBar.style.width = `${(playerElixir / maxElixir) * 100}%`;
         
-        // Update card disabled state
         const cards = cardHandContainer.querySelectorAll('.card');
         cards.forEach((card, index) => {
             const cardData = playerHand[index];
@@ -616,15 +652,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (enemyPlayTimer >= enemyPlayInterval) {
             enemyPlayTimer = 0;
             
-            const cardTypes = ['Knight', 'Archer', 'Giant'];
+            const cardTypes = ['Knight', 'Archer', 'Giant', 'Fireball'];
             const cardToPlay = cardTypes[Math.floor(Math.random() * cardTypes.length)];
             
-            // Spawn in a random lane
             const enemyKing = towers.find(t => t.id === 'enemy-king');
             const x = enemyKing.x + (Math.random() * 100 - 50);
-            const y = enemyKing.y + 70; // Spawn in front of king
+            const y = enemyKing.y + 70;
             
-            spawnUnit(cardToPlay, 'enemy', x, y);
+            if (cardToPlay === 'Fireball') {
+                const playerTowers = towers.filter(t => t.team === 'player' && !t.isKingTower && t.hp > 0);
+                let target = playerTowers[Math.floor(Math.random() * playerTowers.length)];
+                if (!target) {
+                    target = towers.find(t => t.id === 'player-king');
+                }
+                castFireball(target.x, target.y, 'enemy');
+            } else {
+                spawnUnit(cardToPlay, 'enemy', x, y);
+            }
         }
     }
     
@@ -644,38 +688,39 @@ document.addEventListener('DOMContentLoaded', () => {
     restartButton.addEventListener('click', initGame);
 
     // --- Main Game Loop ---
+    let isLoopRunning = false;
     function gameLoop() {
         if (!gameRunning) {
+            isLoopRunning = false;
             return;
         }
-        
+        isLoopRunning = true;
         gameTime++;
 
-        // 1. Update Elixir
         if (playerElixir < maxElixir) {
             playerElixir += elixirRegenRate;
-            if (playerElixir > maxElixir) {
-                playerElixir = maxElixir;
-            }
+            if (playerElixir > maxElixir) playerElixir = maxElixir;
             updateElixirUI();
         }
 
-        // 2. Run Enemy AI
         runEnemyAI();
-
-        // 3. Update all Towers
         towers.forEach(tower => tower.update(gameTime));
-
-        // 4. Update all Units
         units.forEach(unit => unit.update(gameTime));
-
-        // 5. Update all Projectiles
         projectiles.forEach(projectile => projectile.update());
 
-        // 6. Request next frame
         requestAnimationFrame(gameLoop);
     }
 
     // --- Start Game ---
-    initGame();
+    // Add a small safety check to initGame
+    function startGame() {
+        initGame();
+        if (!isLoopRunning) {
+            gameLoop();
+        }
+    }
+    
+    restartButton.addEventListener('click', startGame);
+
+    startGame(); // Initial game start
 });
