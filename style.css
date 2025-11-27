@@ -7,7 +7,7 @@
     --player-blue: #4a90e2;
     --enemy-red: #e54d4d;
     --elixir-pink: #d057e1;
-    --card-bg: #4a3a2a; /* Darker wood */
+    --card-bg: #4a3a2a;
     --card-border: #e0e0e0;
     --text-dark: #333;
     --text-light: #fff;
@@ -33,7 +33,6 @@
 }
 
 body {
-    /* NEW: Using main fantasy font */
     font-family: var(--font-main);
     background: #222;
     color: var(--text-dark);
@@ -60,7 +59,6 @@ body {
     color: var(--text-light);
     text-align: center;
 }
-
 #main-menu h1 {
     font-family: var(--font-main);
     font-size: 48px;
@@ -68,14 +66,12 @@ body {
     text-shadow: 0 4px 10px rgba(0,0,0,0.3);
     margin: 0;
 }
-
 #main-menu p {
     font-family: var(--font-ui);
     font-size: 18px;
     margin-bottom: 40px;
     opacity: 0.9;
 }
-
 #start-button {
     font-family: var(--font-main);
     padding: 15px 30px;
@@ -89,16 +85,12 @@ body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     transition: transform 0.2s ease;
 }
-
 #start-button:hover {
     transform: scale(1.05);
 }
-
-/* --- Hidden Class --- */
 .hidden {
     display: none !important;
 }
-
 
 /* --- Game Container --- */
 #game-container {
@@ -113,16 +105,12 @@ body {
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
-
-/* NEW: Placement Mode Cursor */
 #game-container.placement-mode {
     cursor: crosshair;
 }
-/* NEW: Invalid Placement Cursor */
 #game-container.placement-mode.invalid {
     cursor: no-drop;
 }
-
 
 /* --- Arena Layout --- */
 .arena {
@@ -135,13 +123,11 @@ body {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: repeat(10, 1fr);
 }
-
 .lane {
     background: var(--arena-dirt);
 }
 .lane.left { grid-column: 1; grid-row: 1 / 11; }
 .lane.right { grid-column: 2; grid-row: 1 / 11; }
-
 .river {
     position: absolute;
     top: 50%;
@@ -152,7 +138,6 @@ body {
     transform: translateY(-50%);
     z-index: 1;
 }
-
 .bridge {
     position: absolute;
     top: 50%;
@@ -181,11 +166,9 @@ body {
     border-style: solid;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
-
 .tower .emoji {
     filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
 }
-
 .tower.player {
     background: var(--player-blue);
     border-color: #3a70c2;
@@ -194,8 +177,6 @@ body {
     background: var(--enemy-red);
     border-color: #c23a3a;
 }
-
-/* Tower Positions */
 #enemy-king {
     width: var(--king-tower-size);
     height: var(--king-tower-size);
@@ -206,7 +187,6 @@ body {
 }
 #enemy-princess-1 { top: 90px; left: calc(25% - 30px); }
 #enemy-princess-2 { top: 90px; right: calc(25% - 30px); }
-
 #player-king {
     width: var(--king-tower-size);
     height: var(--king-tower-size);
@@ -218,71 +198,112 @@ body {
 #player-princess-1 { bottom: 90px; left: calc(25% - 30px); }
 #player-princess-2 { bottom: 90px; right: calc(25% - 30px); }
 
-/* --- Units --- */
-.unit {
+/* --- Units & Buildings --- */
+.unit, .building {
     position: absolute;
-    width: 40px; 
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     z-index: 10;
     transition: transform 0.1s linear;
     border-width: 3px;
     border-style: solid;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
 }
-/* NEW: Unit SVGs will get their color from this */
-.unit svg {
-    width: 70%;
-    height: 70%;
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+.unit {
+     border-radius: 50%; /* Units are round */
+}
+.building {
+    border-radius: 8px; /* Buildings are square */
+    z-index: 9; /* Below units */
 }
 
-.unit.player {
+.unit.player, .building.player {
     background-color: var(--player-blue);
     border-color: #3a70c2;
-    color: white; /* This will color the SVG */
 }
-.unit.enemy {
+.unit.enemy, .building.enemy {
     background-color: var(--enemy-red);
     border-color: #c23a3a;
-    color: white; /* This will color the SVG */
 }
-
 .unit.giant {
     width: 50px;
     height: 50px;
 }
 
-/* --- Spell Effect (Fireball) --- */
-.spell-effect {
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    z-index: 150;
-    animation: spell-explode 0.5s ease-out;
-    opacity: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* ==================================
+== YOUR FILE PATHS ARE NOW LIVE! ==
+==================================
+*/
+.unit.knight {
+    width: 40px; 
+    height: 40px;
+    background-image: url('assets/knight-sprite.png');
 }
-/* NEW: Styling the SVG inside the spell */
-.spell-effect.fireball svg {
-    width: 100%;
-    height: 100%;
-    color: #ff8c00;
-    filter: drop-shadow(0 0 10px #ff0000);
+.unit.archer {
+    width: 40px; 
+    height: 40px;
+    background-image: url('assets/archer-sprite.png');
+}
+.unit.giant {
+    width: 50px;
+    height: 50px;
+    background-image: url('assets/giant-sprite.png');
+}
+.unit.mpekka {
+    width: 45px; 
+    height: 45px;
+    background-image: url('assets/mpekka-sprite.png');
+}
+.unit.goblins {
+    width: 30px; 
+    height: 30px;
+    background-image: url('assets/goblins-sprite.png');
+}
+.unit.valkyrie { /* We don't have this card, but left the style */
+    width: 42px; 
+    height: 42px;
+}
+.building.canon {
+    width: 50px;
+    height: 50px;
+    background-image: url('assets/canon-sprite.png');
 }
 
+
+/* --- Spell Effects --- */
+.spell-effect {
+    position: absolute;
+    z-index: 150;
+    opacity: 0;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.spell-effect.fireball {
+    width: 100px;
+    height: 100px;
+    animation: spell-explode 0.5s ease-out;
+    background-image: url('assets/fireball-sprite.png');
+}
+.spell-effect.arrows {
+    width: 200px;
+    height: 200px;
+    animation: spell-fade-in-out 0.8s ease-out;
+    background-image: url('assets/arrows-sprite.png');
+}
 @keyframes spell-explode {
     0% { transform: scale(0.2); opacity: 1; }
     80% { opacity: 1; }
     100% { transform: scale(1.5); opacity: 0; }
 }
+@keyframes spell-fade-in-out {
+    0% { opacity: 0.9; }
+    80% { opacity: 0.9; }
+    100% { opacity: 0; }
+}
 
 
-/* Damage Flash Animation */
+/* --- HP Bars & Damage --- */
 .damage-flash {
     animation: flash 0.2s 1;
 }
@@ -291,8 +312,6 @@ body {
     50% { filter: brightness(2) invert(1); }
     100% { filter: brightness(1); }
 }
-
-/* --- HP Bars --- */
 .hp-bar {
     position: absolute;
     top: -12px;
@@ -311,7 +330,7 @@ body {
     background: #2ecc71;
     transition: width 0.3s;
 }
-.tower .hp-bar { width: 60px; }
+.tower .hp-bar, .building .hp-bar { width: 60px; }
 .unit .hp-bar { width: 40px; }
 .enemy .hp-bar-inner { background: var(--enemy-red); }
 .player .hp-bar-inner { background: #2ecc71; }
@@ -327,10 +346,15 @@ body {
     transition: transform 0.15s linear;
     box-shadow: 0 0 5px #f1c40f;
 }
+.projectile.canon-ball {
+    background: #333;
+    width: 15px;
+    height: 15px;
+}
 .enemy .projectile { background: #ff8a8a; box-shadow: 0 0 5px #ff8a8a; }
 .player .projectile { background: #8adfff; box-shadow: 0 0 5px #8adfff; }
 
-/* --- Player UI (Complete Overhaul) --- */
+/* --- Player UI --- */
 #player-ui {
     position: absolute;
     bottom: 0;
@@ -346,12 +370,11 @@ body {
     padding-bottom: 5px;
 }
 
-/* NEW: Card Tray Style */
 #card-tray {
     width: 95%;
     height: 100px;
-    background: #3a2a1a; /* Dark wood */
-    border: 4px solid #5a3a1a; /* Wood border */
+    background: #3a2a1a;
+    border: 4px solid #5a3a1a;
     border-bottom: none;
     border-top-left-radius: 100% 30px;
     border-top-right-radius: 100% 30px;
@@ -361,7 +384,7 @@ body {
     align-items: center;
     padding: 0 10px;
     position: relative;
-    bottom: -25px; /* Sits below the elixir bar */
+    bottom: -25px;
 }
 
 #card-hand {
@@ -370,10 +393,9 @@ body {
     align-items: center;
     gap: 8px;
     position: relative;
-    top: -15px; /* Move cards up */
+    top: -15px;
 }
 
-/* NEW: Next Card Container */
 #next-card-container {
     position: absolute;
     left: 10px;
@@ -393,7 +415,7 @@ body {
 #next-card-preview {
     width: 50px;
     height: 65px;
-    background: #222;
+    background-color: #222;
     border: 2px solid #555;
     border-radius: 4px;
     display: flex;
@@ -402,25 +424,33 @@ body {
     align-items: center;
     padding: 3px;
     font-family: var(--font-ui);
+    background-size: cover;
+    background-position: center;
 }
 #next-card-preview .card-cost-small {
     font-size: 12px;
     font-weight: 900;
     color: var(--elixir-pink);
     align-self: flex-start;
+    background: rgba(0,0,0,0.6);
+    border-radius: 3px;
+    padding: 0 2px;
 }
-#next-card-preview .card-svg-small {
-    width: 60%;
-    height: 60%;
-    color: white;
+#next-card-preview .card-art-small {
+    width: 100%;
+    height: 50%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 #next-card-preview .card-name-small {
     font-size: 8px;
     color: white;
+    background: rgba(0,0,0,0.6);
+    border-radius: 3px;
+    padding: 1px 3px;
 }
 
-
-/* Elixir Bar */
 #elixir-bar-container {
     width: 300px;
     height: 20px;
@@ -429,9 +459,8 @@ body {
     border: 2px solid #111;
     overflow: hidden;
     position: relative;
-    z-index: 110; /* Above card tray */
+    z-index: 110;
 }
-
 #elixir-bar {
     width: 0%;
     height: 100%;
@@ -439,7 +468,6 @@ body {
     transition: width 0.1s linear;
     box-shadow: 0 0 10px var(--elixir-pink);
 }
-
 #elixir-text {
     position: absolute;
     top: 50%;
@@ -452,12 +480,12 @@ body {
     text-shadow: 1px 1px 2px #000;
 }
 
-/* Card Hand */
+/* --- Card Styles --- */
 .card {
     width: 70px;
     height: 90px;
     background-color: var(--card-bg);
-    border: 3px solid #c9a47a; /* Lighter wood border */
+    border: 3px solid #c9a47a;
     border-radius: 8px;
     cursor: pointer;
     box-shadow: 0 4px 5px rgba(0,0,0,0.3);
@@ -467,20 +495,19 @@ body {
     align-items: center;
     justify-content: space-between;
     transition: transform 0.2s ease, border-color 0.2s ease;
-    color: white; /* For the SVG */
+    color: white;
+    /* Card art is now a background image! */
+    background-size: cover;
+    background-position: center;
 }
-
 .card:hover {
     transform: translateY(-10px);
 }
-
-/* NEW: Selected Card Style */
 .card.selected {
     transform: translateY(-20px) scale(1.1);
     border-color: var(--elixir-pink);
     box-shadow: 0 8px 20px var(--elixir-pink);
 }
-
 .card.disabled {
     filter: grayscale(1) brightness(0.7);
     cursor: not-allowed;
@@ -502,22 +529,17 @@ body {
     border-radius: 4px;
     border: 1px solid var(--elixir-pink);
 }
-
-/* NEW: Card SVG container */
-.card-svg {
+.card-art {
     width: 80%;
     height: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* This empty div will show the card's background-image */
 }
-.card-svg svg {
-    width: 100%;
-    height: 100%;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
-}
-
-
 .card-name {
     font-family: var(--font-ui);
     font-size: 12px;
@@ -529,6 +551,44 @@ body {
     text-align: center;
     width: 100%;
 }
+
+/* ========================================
+== YOUR FILE PATHS ARE NOW LIVE! ==
+========================================
+*/
+.card-knight,
+#next-card-preview.card-knight {
+    background-image: url('assets/knight-card.png');
+}
+.card-archer,
+#next-card-preview.card-archer {
+    background-image: url('assets/archer-card.png');
+}
+.card-giant,
+#next-card-preview.card-giant {
+    background-image: url('assets/giant-card.png');
+}
+.card-fireball,
+#next-card-preview.card-fireball {
+    background-image: url('assets/fireball-card.png');
+}
+.card-mpekka,
+#next-card-preview.card-mpekka {
+    background-image: url('assets/mpekka-card.png');
+}
+.card-goblins,
+#next-card-preview.card-goblins {
+    background-image: url('assets/goblins-card.png');
+}
+.card-canon,
+#next-card-preview.card-canon {
+    background-image: url('assets/canon-card.png');
+}
+.card-arrows,
+#next-card-preview.card-arrows {
+    background-image: url('assets/arrows-card.png');
+}
+
 
 /* --- Game Over Overlay --- */
 #game-over-overlay {
@@ -546,7 +606,6 @@ body {
     color: var(--text-light);
     text-align: center;
 }
-
 #game-over-message {
     font-family: var(--font-main);
     font-size: 48px;
@@ -554,11 +613,9 @@ body {
     margin-bottom: 20px;
     text-shadow: 0 0 10px var(--player-blue);
 }
-
 #game-over-overlay.lose #game-over-message {
     text-shadow: 0 0 10px var(--enemy-red);
 }
-
 #restart-button {
     font-family: var(--font-main);
     padding: 12px 24px;
@@ -571,7 +628,6 @@ body {
     cursor: pointer;
     transition: transform 0.1s ease;
 }
-
 #restart-button:hover {
     transform: scale(1.05);
 }

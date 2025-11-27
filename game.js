@@ -11,28 +11,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameOverOverlay = document.getElementById('game-over-overlay');
     const gameOverMessage = document.getElementById('game-over-message');
     const restartButton = document.getElementById('restart-button');
-    // NEW: Next Card UI
     const nextCardPreview = document.getElementById('next-card-preview');
 
     // --- Game State Variables ---
     let playerElixir = 5;
     let maxElixir = 10;
-    let elixirRegenRate = 0.0055; // SLOWED DOWN: ~1 elixir per 3 seconds
+    let elixirRegenRate = 0.0055; // Slowed down
     let gameRunning = false;
     let units = [];
     let projectiles = [];
     let towers = [];
+    let buildings = []; // NEW: Array for buildings
     let unitIdCounter = 0;
     let gameTime = 0;
     let enemyPlayTimer = 0;
     let enemyPlayInterval = 300;
 
-    // NEW: Placement Mode State
     let selectedCardData = null;
     let selectedCardIndex = -1;
     let placementMode = false;
 
-    // --- Sound Engine (using Tone.js) ---
+    // --- Sound Engine ---
     let sounds = {};
     let audioStarted = false;
 
@@ -51,7 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
             hit: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0 } }).toDestination(),
             spell: new Tone.MembraneSynth().toDestination(),
             towerDestroy: new Tone.MembraneSynth({ pitchDecay: 0.1, octaves: 5 }).toDestination(),
-            error: new Tone.Synth({ envelope: { attack: 0.01, decay: 0.2, release: 0.2 } }).toDestination()
+            error: new Tone.Synth({ envelope: { attack: 0.01, decay: 0.2, release: 0.2 } }).toDestination(),
+            cannonShot: new Tone.Synth({ oscillator: { type: 'fmsquare' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.01, release: 0.1 } }).toDestination()
         };
         audioStarted = true;
     }
@@ -69,27 +69,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 sounds.towerDestroy.triggerAttackRelease('G1', '2n');
             } else if (sound === 'error') {
                 sounds.error.triggerAttackRelease('C3', '8n');
+            } else if (sound === 'cannonShot') {
+                sounds.cannonShot.triggerAttackRelease('G2', '8n');
             }
         } catch (e) {
             console.error("Error playing sound:", e);
         }
     }
 
-    // --- NEW: SVG Graphics Definitions ---
-    // We define these here so card definitions and unit classes can use them.
-    const SVGs = {
-        knight: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M50 10 L80 25 L80 55 L50 85 L20 55 L20 25 Z M50 20 L50 75 L70 50 L70 30 Z"></path><path fill="currentColor" d="M45 15 L55 15 L55 80 L45 80 Z" transform="rotate(0 50 50)"></path></svg>`,
-        archer: `<svg viewBox="0 0 100 100"><path fill="none" stroke="currentColor" stroke-width="8" d="M50 10 C70 30, 70 70, 50 90"></path><path fill="currentColor" d="M45 8 L55 8 L55 92 L45 92 Z"></path><path fill="currentColor" d="M50 48 L90 48 L80 43 L80 53 Z"></path></svg>`,
-        giant: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M30 70 C10 70, 10 40, 30 40 L40 40 L40 30 C40 20, 50 10, 60 10 L70 10 C80 10, 90 20, 90 30 L90 60 C90 80, 80 90, 70 90 L30 90 Z M40 60 L70 60 L70 70 L40 70 Z"></path></svg>`,
-        fireball: `<svg viewBox="0 0 100 100"><path fill="currentColor" d="M50 90 C30 90, 20 70, 30 50 C10 50, 20 20, 40 10 C50 30, 60 30, 70 10 C90 20, 100 50, 70 50 C80 70, 70 90, 50 90 Z"></path></svg>`
-    };
-
-    // --- Card & Deck Definitions ---
+    // --- Card Definitions (Matching your 8 cards) ---
     const cardDefinitions = {
-        knight: { name: 'Knight', cost: 3, type: 'unit', unitType: 'Knight', svg: SVGs.knight },
-        archer: { name: 'Archer', cost: 3, type: 'unit', unitType: 'Archer', svg: SVGs.archer },
-        giant: { name: 'Giant', cost: 5, type: 'unit', unitType: 'Giant', svg: SVGs.giant },
-        fireball: { name: 'Fireball', cost: 4, type: 'spell', spellType: 'Fireball', svg: SVGs.fireball }
+        knight: { name: 'Knight', cost: 3, type: 'unit', unitType: 'Knight' },
+        archer: { name: 'Archer', cost: 3, type: 'unit', unitType: 'Archer' },
+        giant: { name: 'Giant', cost: 5, type: 'unit', unitType: 'Giant' },
+        fireball: { name: 'Fireball', cost: 4, type: 'spell', spellType: 'Fireball' },
+        mpekka: { name: 'M.Pekka', cost: 4, type: 'unit', unitType: 'Mpekka' },
+        goblins: { name: 'Goblins', cost: 2, type: 'unit', unitType: 'Goblins' },
+        canon: { name: 'Cannon', cost: 3, type: 'building', unitType: 'Canon' },
+        arrows: { name: 'Arrows', cost: 3, type: 'spell', spellType: 'Arrows' }
     };
     
     let playerDeck = [];
@@ -113,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
     
-    // --- Base Class: Entity (Units & Towers) ---
+    // --- Base Class: Entity ---
     class Entity {
         constructor(id, team, hp, element) {
             this.id = id;
@@ -165,22 +162,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.isKingTower) {
                     endGame(this.team === 'player' ? 'enemy' : 'player');
                 }
+            } else if (this instanceof Building) {
+                playSound('towerDestroy');
+                buildings = buildings.filter(b => b.id !== this.id);
             } else {
                 units = units.filter(u => u.id !== this.id);
             }
         }
 
+        // Updated findTarget to include buildings
         findTarget(allEntities) {
             let closestTarget = null;
             let minDistance = Infinity;
 
             for (const entity of allEntities) {
                 if (entity.team !== this.team && entity.hp > 0) {
+                    
+                    // Logic for what this unit can attack
                     if (this.targetType === 'building') {
-                        if (!(entity instanceof Tower)) {
+                        // Giants attack Towers OR Buildings
+                        if (!(entity instanceof Tower) && !(entity instanceof Building)) {
                             continue; 
                         }
+                    } else if (this.targetType === 'ground') {
+                        // Logic for ground-only units (not implemented yet)
+                        // if (entity.isFlying) continue;
                     }
+                    // 'groundAndAir' (default) attacks anything
+
                     const distance = getDistance(this, entity);
                     if (distance < minDistance && distance < this.aggroRange) {
                         minDistance = distance;
@@ -227,8 +236,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!this.activated) return;
             }
             
+            // Towers target Units first, then Buildings
             if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.attackRange) {
-                this.findTarget(units);
+                this.findTarget([...units, ...buildings]); 
             }
             
             if (this.attackCooldown > 0) {
@@ -241,22 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        findTarget(allUnits) {
-            let closestTarget = null;
-            let minDistance = Infinity;
-
-            for (const unit of allUnits) {
-                if (unit.team !== this.team && unit.hp > 0) {
-                    const distance = getDistance(this, unit);
-                    if (distance < minDistance && distance < this.aggroRange) {
-                        minDistance = distance;
-                        closestTarget = unit;
-                    }
-                }
-            }
-            this.target = closestTarget;
-        }
-
         attack() {
             if (!this.target) return;
             const projectile = new Projectile(
@@ -270,6 +264,62 @@ document.addEventListener('DOMContentLoaded', () => {
             projectiles.push(projectile);
         }
     }
+
+    // --- NEW: Building Class ---
+    class Building extends Entity {
+        constructor(id, team, hp, element, x, y, stats) {
+            super(id, team, hp, element);
+            
+            const containerRect = gameContainer.getBoundingClientRect();
+            const worldRect = gameWorld.getBoundingClientRect();
+            const initialX = x - (worldRect.left - containerRect.left) - (element.offsetWidth / 2);
+            const initialY = y - (worldRect.top - containerRect.top) - (element.offsetHeight / 2);
+
+            this.element.style.transform = `translate(${initialX}px, ${initialY}px)`;
+            this.x = x;
+            this.y = y;
+
+            this.attackRange = stats.attackRange;
+            this.aggroRange = stats.aggroRange;
+            this.attackSpeed = stats.attackSpeed;
+            this.damage = stats.damage;
+            this.targetType = stats.targetType; // What it can shoot at
+            this.attackCooldown = 0;
+            
+            this.lifetime = stats.lifetime; // in game ticks (60 ticks/sec)
+            this.decayDamage = this.maxHp / this.lifetime;
+        }
+
+        update(gameTime) {
+            // No super.update() because buildings don't read position
+            if (this.hp <= 0) return;
+
+            // Lifetime decay
+            this.hp -= this.decayDamage;
+            this.updateHPBar();
+            if (this.hp <= 0) {
+                this.die();
+                return;
+            }
+
+            // Find target
+            if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.attackRange) {
+                this.findTarget(units); // Buildings only target units
+            }
+            
+            if (this.attackCooldown > 0) {
+                this.attackCooldown -= 1000 / 60;
+            }
+
+            if (this.target && this.attackCooldown <= 0) {
+                this.attack();
+                this.attackCooldown = this.attackSpeed;
+            }
+        }
+        
+        attack() { /* Overridden by subclasses */ }
+    }
+
 
     // --- Unit Class ---
     class Unit extends Entity {
@@ -291,19 +341,24 @@ document.addEventListener('DOMContentLoaded', () => {
             this.damage = stats.damage;
             this.targetType = stats.targetType;
             this.attackCooldown = 0;
+            this.attackType = stats.attackType || 'single';
+            this.splashRadius = stats.splashRadius || 0;
         }
         
         update(gameTime) {
             if (this.hp <= 0) return;
 
             if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.aggroRange) {
-                const allTargets = [...units, ...towers];
+                const allTargets = [...units, ...towers, ...buildings]; // Can target buildings
                 this.findTarget(allTargets);
                 
                 if (!this.target) {
-                    this.target = (this.team === 'player') ? 
-                        towers.find(t => t.id === 'enemy-king') : 
-                        towers.find(t => t.id === 'player-king');
+                    // Default target: nearest enemy building/tower
+                    const enemyBuildings = [
+                        ...towers.filter(t => t.team !== this.team),
+                        ...buildings.filter(b => b.team !== this.team)
+                    ];
+                    this.findTarget(enemyBuildings); // Find closest building
                 }
             }
             
@@ -314,13 +369,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.target && this.target.hp > 0) {
                 const distance = getDistance(this, this.target);
                 if (distance <= this.attackRange) {
+                    this.element.classList.add('is-attacking');
+                    this.element.classList.remove('is-walking');
                     if (this.attackCooldown <= 0) {
                         this.attack();
                         this.attackCooldown = this.attackSpeed;
                     }
                 } else {
+                    this.element.classList.add('is-walking');
+                    this.element.classList.remove('is-attacking');
                     this.move();
                 }
+            } else {
+                 this.element.classList.remove('is-walking');
+                 this.element.classList.remove('is-attacking');
             }
         }
         
@@ -345,7 +407,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element.style.transform = `translate(${elX}px, ${elY}px)`;
         }
 
-        attack() { /* Overridden by subclasses */ }
+        attack() { 
+            if (this.target && this.target.hp > 0) {
+                this.target.takeDamage(this.damage);
+            }
+        }
     }
 
     // --- Specific Unit Classes ---
@@ -361,15 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const element = document.createElement('div');
             element.className = `unit ${team} knight`;
-            element.innerHTML = cardDefinitions.knight.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 300, element, x, y, stats);
-        }
-        
-        attack() {
-            if (this.target && this.target.hp > 0) {
-                this.target.takeDamage(this.damage);
-            }
         }
     }
 
@@ -385,7 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const element = document.createElement('div');
             element.className = `unit ${team} archer`;
-            element.innerHTML = cardDefinitions.archer.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 150, element, x, y, stats);
         }
@@ -412,21 +470,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 aggroRange: 100,
                 attackSpeed: 1500,
                 damage: 50,
-                targetType: 'building'
+                targetType: 'building' // Attacks towers AND buildings
             };
             const element = document.createElement('div');
             element.className = `unit ${team} giant`;
-            element.innerHTML = cardDefinitions.giant.svg; // Use SVG
             gameWorld.appendChild(element);
             super(id, team, 700, element, x, y, stats);
         }
-        
-        attack() {
-            if (this.target && this.target.hp > 0) {
-                this.target.takeDamage(this.damage);
-            }
+    }
+
+    class Mpekka extends Unit {
+        constructor(id, team, x, y) {
+            const stats = {
+                speed: 1.2,
+                attackRange: 30,
+                aggroRange: 100,
+                attackSpeed: 1800, 
+                damage: 200, 
+                targetType: 'groundAndAir'
+            };
+            const element = document.createElement('div');
+            element.className = `unit ${team} mpekka`;
+            gameWorld.appendChild(element);
+            super(id, team, 400, element, x, y, stats);
         }
     }
+
+    class Goblins extends Unit {
+        constructor(id, team, x, y) {
+            const stats = {
+                speed: 2.0,
+                attackRange: 30,
+                aggroRange: 100,
+                attackSpeed: 800,
+                damage: 20,
+                targetType: 'groundAndAir'
+            };
+            const element = document.createElement('div');
+            element.className = `unit ${team} goblins`;
+            gameWorld.appendChild(element);
+            super(id, team, 80, element, x, y, stats);
+        }
+    }
+
+    // --- Specific Building Class ---
+    class Canon extends Building {
+         constructor(id, team, x, y) {
+            const stats = {
+                attackRange: 130,
+                aggroRange: 140,
+                attackSpeed: 1000,
+                damage: 40,
+                targetType: 'groundAndAir', // Shoots at units
+                lifetime: 1800 // 30 seconds * 60 ticks/sec
+            };
+            const element = document.createElement('div');
+            element.className = `building ${team} canon`;
+            gameWorld.appendChild(element);
+            super(id, team, 250, element, x, y, stats);
+        }
+
+        attack() {
+            if (!this.target) return;
+            playSound('cannonShot');
+            const projectile = new Projectile(
+                `proj_${unitIdCounter++}`,
+                this.team,
+                this.damage,
+                this.x,
+                this.y,
+                this.target
+            );
+            projectile.element.classList.add('canon-ball'); // Style it
+            projectiles.push(projectile);
+        }
+    }
+
     
     // --- Projectile Class ---
     class Projectile {
@@ -455,27 +574,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.die();
                 return;
             }
-            
             const distance = getDistance(this, this.target);
-            
             if (distance < 10) {
                 this.target.takeDamage(this.damage);
                 this.die();
                 return;
             }
-            
             const dx = this.target.x - this.x;
             const dy = this.target.y - this.y;
             const speed = 8;
-            
             this.x += (dx / distance) * speed;
             this.y += (dy / distance) * speed;
-            
             const containerRect = gameContainer.getBoundingClientRect();
             const worldRect = gameWorld.getBoundingClientRect();
             const elX = this.x - (worldRect.left - containerRect.left) - 5;
             const elY = this.y - (worldRect.top - containerRect.top) - 5;
-            
             this.element.style.transform = `translate(${elX}px, ${elY}px)`;
         }
         
@@ -491,14 +604,13 @@ document.addEventListener('DOMContentLoaded', () => {
         units = [];
         projectiles = [];
         towers = [];
+        buildings = []; // Reset buildings
         
         gameRunning = true;
         playerElixir = 5;
         gameTime = 0;
         enemyPlayTimer = 0;
         gameOverOverlay.style.display = 'none';
-        
-        // NEW: Reset placement mode
         resetPlacement();
 
         towers = [
@@ -521,10 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cardDefinitions.archer,
             cardDefinitions.giant,
             cardDefinitions.fireball,
-            cardDefinitions.knight,
-            cardDefinitions.archer,
-            cardDefinitions.giant,
-            cardDefinitions.fireball,
+            cardDefinitions.mpekka,
+            cardDefinitions.goblins,
+            cardDefinitions.canon,
+            cardDefinitions.arrows,
         ].sort(() => Math.random() - 0.5);
         
         playerHand = [];
@@ -551,16 +663,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('button');
             card.className = 'card';
             
-            // Add selected class
+            const cardType = cardData.type === 'unit' ? cardData.unitType : cardData.spellType;
+            card.classList.add(`card-${cardType.toLowerCase()}`);
+
             if (index === selectedCardIndex) {
                 card.classList.add('selected');
             }
 
             card.innerHTML = `
                 <div class="card-cost">${cardData.cost}</div>
-                <div class="card-svg">
-                    ${cardData.svg}
-                </div>
+                <div class="card-art"></div>
                 <div class="card-name">${cardData.name}</div>
             `;
             
@@ -573,13 +685,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // NEW: Update Next Card UI
     function updateNextCardUI() {
         if (playerDeck.length > 0) {
             const nextCard = playerDeck[0];
+            const cardType = nextCard.type === 'unit' ? nextCard.unitType : nextCard.spellType;
+            
+            nextCardPreview.className = 'next-card-preview-box'; 
+            nextCardPreview.classList.add(`card-${cardType.toLowerCase()}`);
+
             nextCardPreview.innerHTML = `
                 <div class="card-cost-small">${nextCard.cost}</div>
-                <div class="card-svg-small">${nextCard.svg}</div>
+                <div class="card-art-small"></div>
                 <div class="card-name-small">${nextCard.name}</div>
             `;
         } else {
@@ -587,38 +703,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // NEW: selectCard (replaces old playCard)
     function selectCard(cardData, index) {
         if (playerElixir < cardData.cost || !gameRunning) {
             playSound('error', 'C3');
             return;
         }
-
-        // Deselect if clicking the same card
         if (index === selectedCardIndex) {
             resetPlacement();
             return;
         }
-
         placementMode = true;
         selectedCardData = cardData;
         selectedCardIndex = index;
         gameContainer.classList.add('placement-mode');
-        
-        updateCardHandUI(); // Re-render hand to show selection
+        updateCardHandUI();
     }
 
-    // NEW: resetPlacement
     function resetPlacement() {
         placementMode = false;
         selectedCardData = null;
         selectedCardIndex = -1;
         gameContainer.classList.remove('placement-mode');
         gameContainer.classList.remove('invalid');
-        updateCardHandUI(); // Re-render hand to remove selection
+        updateCardHandUI();
     }
 
-    // NEW: handlePlacement (click on arena)
     function handlePlacement(e) {
         if (!placementMode || !selectedCardData) return;
 
@@ -626,60 +735,89 @@ document.addEventListener('DOMContentLoaded', () => {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // --- Placement Validation ---
         const riverY = gameContainer.offsetHeight / 2;
+        const bridgeYStart = riverY - 25;
+        const bridgeYEnd = riverY + 25;
+
+        // --- Placement Validation ---
+        let invalidPlacement = false;
+        // 1. Can't place on enemy side
         if (y < riverY) {
-            // Invalid placement (enemy side)
+            invalidPlacement = true;
+        }
+        // 2. Can't place buildings on river/bridge
+        if (selectedCardData.type === 'building' && y > bridgeYStart && y < bridgeYEnd) {
+             invalidPlacement = true;
+        }
+
+        if (invalidPlacement) {
             playSound('error', 'C3');
             gameContainer.classList.add('invalid');
             setTimeout(() => gameContainer.classList.remove('invalid'), 200);
             return;
         }
 
-        // --- Valid Placement, Play Card ---
         playerElixir -= selectedCardData.cost;
         
         if (selectedCardData.type === 'unit') {
             spawnUnit(selectedCardData.unitType, 'player', x, y);
+        } else if (selectedCardData.type === 'building') {
+            spawnBuilding(selectedCardData.unitType, 'player', x, y);
         } else if (selectedCardData.type === 'spell') {
-            castFireball(x, y, 'player');
+            if (selectedCardData.spellType === 'Fireball') {
+                castFireball(x, y, 'player');
+            } else if (selectedCardData.spellType === 'Arrows') {
+                castArrows(x, y, 'player');
+            }
         }
 
-        // Cycle card
         const playedCard = playerHand.splice(selectedCardIndex, 1)[0];
         playerDeck.push(playedCard);
         drawCard();
-        
-        // Reset state
         resetPlacement();
-        
-        // Update UI
         updateElixirUI();
         updateNextCardUI();
     }
     
-    // Add the new placement listener
     gameContainer.addEventListener('click', handlePlacement);
-
 
     // --- Spell Logic ---
     function castFireball(x, y, team) {
         playSound('spell');
-        
         const effect = document.createElement('div');
         effect.className = 'spell-effect fireball';
-        effect.innerHTML = cardDefinitions.fireball.svg; // Use SVG
         const containerRect = gameContainer.getBoundingClientRect();
         const worldRect = gameWorld.getBoundingClientRect();
         effect.style.transform = `translate(${x - (worldRect.left - containerRect.left) - 50}px, ${y - (worldRect.top - containerRect.top) - 50}px)`;
-        
         gameWorld.appendChild(effect);
         setTimeout(() => effect.remove(), 500); 
 
-        const allTargets = [...units, ...towers];
+        const allTargets = [...units, ...towers, ...buildings]; // Spells hit buildings
         const damageRadius = 50;
         const damage = 100;
-        
+        allTargets.forEach(target => {
+            if (target.team !== team && target.hp > 0) {
+                const distance = getDistance({x, y}, target);
+                if (distance <= damageRadius) {
+                    target.takeDamage(damage);
+                }
+            }
+        });
+    }
+
+    function castArrows(x, y, team) {
+        playSound('spell', 'A4');
+        const effect = document.createElement('div');
+        effect.className = 'spell-effect arrows';
+        const containerRect = gameContainer.getBoundingClientRect();
+        const worldRect = gameWorld.getBoundingClientRect();
+        effect.style.transform = `translate(${x - (worldRect.left - containerRect.left) - 100}px, ${y - (worldRect.top - containerRect.top) - 100}px)`;
+        gameWorld.appendChild(effect);
+        setTimeout(() => effect.remove(), 800); 
+
+        const allTargets = [...units, ...towers, ...buildings];
+        const damageRadius = 100; 
+        const damage = 40; 
         allTargets.forEach(target => {
             if (target.team !== team && target.hp > 0) {
                 const distance = getDistance({x, y}, target);
@@ -706,10 +844,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 unit = new Giant(id, team, x, y);
                 playSound('spawn', 'G3');
                 break;
+            case 'Mpekka':
+                unit = new Mpekka(id, team, x, y);
+                playSound('spawn', 'A3');
+                break;
+            case 'Goblins':
+                playSound('spawn', 'G5', '16n');
+                units.push(new Goblins(id+'_1', team, x-15, y-15));
+                units.push(new Goblins(id+'_2', team, x+15, y-15));
+                units.push(new Goblins(id+'_3', team, x, y+15));
+                return; // Return early as push is handled
         }
         if(unit) {
             units.push(unit);
         }
+    }
+
+    function spawnBuilding(type, team, x, y) {
+         const id = `${team}_${type}_${unitIdCounter++}`;
+         let building;
+         switch(type) {
+            case 'Canon':
+                building = new Canon(id, team, x, y);
+                playSound('spawn', 'C3');
+                break;
+         }
+         if(building) {
+            buildings.push(building);
+         }
     }
 
     function updateElixirUI() {
@@ -719,9 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const cards = cardHandContainer.querySelectorAll('.card');
         cards.forEach((card, index) => {
-            // Don't disable the selected card, just check elixir
             if (index === selectedCardIndex) return; 
-            
             const cardData = playerHand[index];
             if (cardData && playerElixir < cardData.cost) {
                 card.classList.add('disabled');
@@ -731,30 +891,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Enemy AI ---
+    // --- Enemy AI (Updated for 8 cards) ---
     function runEnemyAI() {
         enemyPlayTimer++;
         if (enemyPlayTimer >= enemyPlayInterval) {
             enemyPlayTimer = 0;
             
-            const cardTypes = ['Knight', 'Archer', 'Giant', 'Fireball'];
-            const cardToPlay = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+            const cardKeys = Object.keys(cardDefinitions);
+            const randomCardKey = cardKeys[Math.floor(Math.random() * cardKeys.length)];
+            const cardData = cardDefinitions[randomCardKey];
             
+            if (Math.random() < 0.5) return; 
+
             const enemyKing = towers.find(t => t.id === 'enemy-king');
             const x = enemyKing.x + (Math.random() * 100 - 50);
             const y = enemyKing.y + 70;
             
-            if (cardToPlay === 'Fireball') {
-                const playerTowers = towers.filter(t => t.team === 'player' && !t.isKingTower && t.hp > 0);
-                let target = playerTowers[Math.floor(Math.random() * playerTowers.length)];
-                if (!target) {
-                    target = towers.find(t => t.id === 'player-king');
-                }
+            if (cardData.type === 'spell') {
+                const playerTargets = [...towers, ...buildings].filter(t => t.team === 'player' && t.hp > 0);
+                let target = playerTargets[Math.floor(Math.random() * playerTargets.length)];
                 if(target) {
-                     castFireball(target.x, target.y, 'enemy');
+                    if(cardData.spellType === 'Fireball') castFireball(target.x, target.y, 'enemy');
+                    if(cardData.spellType === 'Arrows') castArrows(target.x, target.y, 'enemy');
                 }
+            } else if (cardData.type === 'building') {
+                spawnBuilding(cardData.unitType, 'enemy', x, y);
             } else {
-                spawnUnit(cardToPlay, 'enemy', x, y);
+                spawnUnit(cardData.unitType, 'enemy', x, y);
             }
         }
     }
@@ -790,6 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         runEnemyAI();
         towers.forEach(tower => tower.update(gameTime));
+        buildings.forEach(b => b.update(gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
         projectiles.forEach(projectile => projectile.update());
 
@@ -798,14 +962,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Start Game ---
     function startGame() {
-        initAudio(); // Start audio on this first click
+        initAudio();
         mainMenu.classList.add('hidden');
         gameContainer.classList.remove('hidden');
-        
-        initGame(); // Set up the game board
+        initGame();
         
         if (!isLoopRunning) {
-            gameLoop(); // Start the game loop
+            gameLoop();
         }
     }
     
