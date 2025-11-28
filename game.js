@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNextCardUI() {
         if (playerDeck.length > 0) {
             const nextCard = playerDeck[0];
-            // **FIXED TYPO HERE**
+            // **FIX: Corrected typo from 'nextC[ard...' to 'nextCard...'**
             const cardType = nextCard.type === 'unit' ? nextCard.unitType : (nextCard.type === 'building' ? nextCard.unitType : nextCard.spellType);
             
             nextCardPreview.className = 'next-card-preview-box'; 
@@ -1002,7 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         runEnemyAI();
         towers.forEach(tower => tower.update(gameTime));
-        buildings.forEach(b => b.update(Two-ColumnPane.gameTime)); // Update buildings
+        // **FIX: Corrected typo from 'Two-ColumnPane.gameTime' to 'gameTime'**
+        buildings.forEach(b => b.update(gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
         projectiles.forEach(projectile => projectile.update());
 

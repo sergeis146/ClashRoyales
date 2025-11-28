@@ -506,7 +506,8 @@ body {
     justify-content: space-between;
     transition: transform 0.2s ease, border-color 0.2s ease;
     color: white;
-    background-image: none; /* FIX: Card art should not be on the whole card */
+    /* FIX: Card art should not be on the whole card */
+    background-image: none;
 }
 .card:hover {
     transform: translateY(-10px);
@@ -560,6 +561,7 @@ body {
 }
 
 /* --- Card Art --- */
+/* FIX: Card art should be on the .card-art div, not the whole card */
 .card-knight .card-art,
 #next-card-preview.card-knight .card-art-small {
     background-image: url('assets/knight-card.png');
