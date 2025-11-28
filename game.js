@@ -343,6 +343,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.attackCooldown = 0;
             this.attackType = stats.attackType || 'single';
             this.splashRadius = stats.splashRadius || 0;
+            
+            // NEW: Define lane X-coordinate
+            this.laneX = (this.x < gameContainer.offsetWidth / 2) ? 
+                gameContainer.offsetWidth * 0.25 : // Left Lane
+                gameContainer.offsetWidth * 0.75; // Right Lane
         }
         
         update(gameTime) {
@@ -391,13 +396,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // --- NEW: PATHFINDING LOGIC ---
         move() {
             if (!this.target) return;
-            
-            const dx = this.target.x - this.x;
-            const dy = this.target.y - this.y;
+
+            const riverY = gameContainer.offsetHeight / 2;
+            let destX, destY;
+
+            // Check if we are on our side of the river
+            const onOurSide = (this.team === 'player' && this.y > riverY) || (this.team === 'enemy' && this.y < riverY);
+            // Check if target is on our side
+            const targetOnOurSide = (this.target.team === 'player' && this.target.y > riverY) || (this.target.team === 'enemy' && this.target.y < riverY);
+
+            if (onOurSide) {
+                // We are on our side
+                if (targetOnOurSide) {
+                    // Target is also on our side (e.g., enemy unit). Go straight for it.
+                    destX = this.target.x;
+                    destY = this.target.y;
+                } else {
+                    // Target is across the river. We must go to our bridge first.
+                    destX = this.laneX; // Go to our lane's X
+                    destY = riverY; // Go to the river
+                }
+            } else {
+                // We are on the enemy side. Go directly for the target.
+                destX = this.target.x;
+                destY = this.target.y;
+            }
+
+            const dx = destX - this.x;
+            const dy = destY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            
+
+            // Stop moving if we're at the destination (prevents jittering)
+            if (distance < this.speed) {
+                return;
+            }
+
             const moveX = (dx / distance) * this.speed;
             const moveY = (dy / distance) * this.speed;
 
@@ -744,12 +780,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const y = e.clientY - rect.top;
 
         const riverY = gameContainer.offsetHeight / 2;
-        const bridgeYStart = riverY - 25;
-        const bridgeYEnd = riverY + 25;
+        const bridgeYStart = riverY - 30; // Use bridge height
+        const bridgeYEnd = riverY + 30;
 
         // --- Placement Validation ---
         let invalidPlacement = false;
-        // 1. Can't place on enemy side (spells are okay)
+        // 1. Can't place units/buildings on enemy side
         if (y < riverY && selectedCardData.type !== 'spell') {
             invalidPlacement = true;
         }
@@ -925,7 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if(target) {
                     if(cardData.spellType === 'Fireball') castFireball(target.x, target.y, 'enemy');
-                    if(cardData.spellType === 'Arrows') castArrows(target.x, 'enemy');
+                    if(cardData.spellType === 'Arrows') castArrows(target.x, target.y, 'enemy');
                 }
             } else if (cardData.type === 'building') {
                 spawnBuilding(cardData.unitType, 'enemy', x, y);
@@ -966,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         runEnemyAI();
         towers.forEach(tower => tower.update(gameTime));
-        buildings.forEach(b => b.update(gameTime)); // Update buildings
+        buildings.forEach(b => b.update(Two-ColumnPane.gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
         projectiles.forEach(projectile => projectile.update());
 

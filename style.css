@@ -3,7 +3,8 @@
     --arena-grass: #799a4a;
     --arena-dirt: #b88a4e;
     --river-color: #4a90e2;
-    --bridge-color: #8b5a2b;
+    --bridge-color: #8c8c8c; /* NEW: Stone color */
+    --bridge-border: #555;
     --player-blue: #4a90e2;
     --enemy-red: #e54d4d;
     --elixir-pink: #d057e1;
@@ -19,6 +20,7 @@
     --arena-height: 700px;
     --tower-size: 60px;
     --king-tower-size: 70px;
+    --grass-width: 15%; /* NEW: Width of grass strips */
 }
 
 * {
@@ -112,44 +114,58 @@ body {
     cursor: no-drop;
 }
 
-/* --- Arena Layout --- */
+/* --- Arena Layout (NEW) --- */
 .arena {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(10, 1fr);
-}
-.lane {
+    /* The base arena is now dirt */
     background: var(--arena-dirt);
 }
-.lane.left { grid-column: 1; grid-row: 1 / 11; }
-.lane.right { grid-column: 2; grid-row: 1 / 11; }
+/* Use pseudo-elements for grass strips */
+.arena::before, .arena::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: var(--grass-width);
+    height: 100%;
+    background: var(--arena-grass);
+    z-index: 0;
+}
+.arena::before {
+    left: 0;
+}
+.arena::after {
+    right: 0;
+}
+
 .river {
     position: absolute;
     top: 50%;
     left: 0;
     width: 100%;
-    height: 50px;
+    height: 60px; /* Slightly wider river */
     background: var(--river-color);
+    border-top: 2px solid #3a70c2;
+    border-bottom: 2px solid #3a70c2;
     transform: translateY(-50%);
     z-index: 1;
 }
 .bridge {
     position: absolute;
     top: 50%;
-    width: 50px;
-    height: 50px;
+    width: 60px; /* Wider bridge */
+    height: 60px;
     background: var(--bridge-color);
-    border: 4px solid #5a3a1a;
+    border: 4px solid var(--bridge-border);
+    border-radius: 4px;
     transform: translateY(-50%);
     z-index: 2;
 }
-.bridge.left { left: calc(25% - 25px); }
-.bridge.right { right: calc(25% - 25px); }
+.bridge.left { left: calc(25% - 30px); }
+.bridge.right { right: calc(25% - 30px); }
 
 /* --- Towers --- */
 .tower {
@@ -231,10 +247,7 @@ body {
     height: 50px;
 }
 
-/* ==================================
-== ART IS NOW IMPLEMENTED! ==
-==================================
-*/
+/* --- Unit/Building Art --- */
 .unit.knight {
     width: 40px; 
     height: 40px;
@@ -493,8 +506,7 @@ body {
     justify-content: space-between;
     transition: transform 0.2s ease, border-color 0.2s ease;
     color: white;
-    /* Card art is now applied to the .card-art div, not here */
-    background-image: none;
+    background-image: none; /* FIX: Card art should not be on the whole card */
 }
 .card:hover {
     transform: translateY(-10px);
@@ -547,10 +559,6 @@ body {
     width: 100%;
 }
 
-/* ========================================
-== ART IS NOW IMPLEMENTED! ==
-========================================
-*/
 /* --- Card Art --- */
 .card-knight .card-art,
 #next-card-preview.card-knight .card-art-small {
