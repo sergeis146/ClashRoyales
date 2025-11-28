@@ -203,16 +203,21 @@ body {
 }
 #enemy-princess-1 { top: 90px; left: calc(25% - 30px); }
 #enemy-princess-2 { top: 90px; right: calc(25% - 30px); }
+
+/* **** BUG FIX **** */
+/* Moved towers up so UI doesn't cover them */
 #player-king {
     width: var(--king-tower-size);
     height: var(--king-tower-size);
-    bottom: 20px;
+    bottom: 140px; /* Was 20px */
     left: 50%;
     transform: translateX(-50%);
     font-size: 40px;
 }
-#player-princess-1 { bottom: 90px; left: calc(25% - 30px); }
-#player-princess-2 { bottom: 90px; right: calc(25% - 30px); }
+#player-princess-1 { bottom: 160px; left: calc(25% - 30px); } /* Was 90px */
+#player-princess-2 { bottom: 160px; right: calc(25% - 30px); } /* Was 90px */
+/* ****************** */
+
 
 /* --- Units & Buildings --- */
 .unit, .building {
@@ -436,6 +441,7 @@ body {
     font-family: var(--font-ui);
     background-size: cover;
     background-position: center;
+    overflow: hidden; /* Prevent art from spilling */
 }
 #next-card-preview .card-cost-small {
     font-size: 12px;
@@ -447,8 +453,8 @@ body {
     padding: 0 2px;
 }
 #next-card-preview .card-art-small {
-    width: 90%; /* FIX: Make art bigger */
-    height: 35px;
+    width: 90%;
+    height: 35px; /* Fixed height */
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
@@ -506,7 +512,8 @@ body {
     justify-content: space-between;
     transition: transform 0.2s ease, border-color 0.2s ease;
     color: white;
-    background-image: none; /* FIX: Card art should not be on the whole card */
+    background-image: none; /* Art is on the .card-art div */
+    overflow: hidden; /* Prevent art from spilling */
 }
 .card:hover {
     transform: translateY(-10px);
@@ -536,16 +543,19 @@ body {
     background: rgba(0,0,0,0.6);
     border-radius: 4px;
     border: 1px solid var(--elixir-pink);
+    z-index: 1; /* Stay above art */
 }
 .card-art {
-    width: 100%; /* FIX: Make art bigger */
-    height: 55px;
+    width: 100%; /* FIX: Make art fill card width */
+    height: 55px; /* FIX: Fixed height */
     display: flex;
     justify-content: center;
     align-items: center;
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    position: relative;
+    top: -10px; /* Scoot art up a bit */
 }
 .card-name {
     font-family: var(--font-ui);
@@ -557,10 +567,10 @@ body {
     border-radius: 4px;
     text-align: center;
     width: 100%;
+    z-index: 1; /* Stay above art */
 }
 
 /* --- Card Art --- */
-/* FIX: Card art should be on the .card-art div, not the whole card */
 .card-knight .card-art,
 #next-card-preview.card-knight .card-art-small {
     background-image: url('assets/knight-card.png');
