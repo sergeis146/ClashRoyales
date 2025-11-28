@@ -546,8 +546,11 @@ body {
     z-index: 1; /* Stay above art */
 }
 .card-art {
-    width: 100%; /* FIX: Make art fill card width */
-    height: 55px; /* FIX: Fixed height */
+    /* **** BUG FIX **** */
+    /* Art was too small. This makes it fill the card. */
+    width: 100%; 
+    height: 55px;
+    /* ***************** */
     display: flex;
     justify-content: center;
     align-items: center;

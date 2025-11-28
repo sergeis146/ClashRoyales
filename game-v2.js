@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.attackType = stats.attackType || 'single';
             this.splashRadius = stats.splashRadius || 0;
             
-            // NEW: Define lane X-coordinate
+            // Define lane X-coordinate
             this.laneX = (this.x < gameContainer.offsetWidth / 2) ? 
                 gameContainer.offsetWidth * 0.25 : // Left Lane
                 gameContainer.offsetWidth * 0.75; // Right Lane
@@ -353,32 +353,21 @@ document.addEventListener('DOMContentLoaded', () => {
         update(gameTime) {
             if (this.hp <= 0) return;
 
-            if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.aggroRange) {
-                const allTargets = [...units, ...towers, ...buildings]; // Can target buildings
-                this.findTarget(allTargets);
-                
-                if (!this.target) {
-                    // Default target: nearest enemy building/tower
-                    const enemyBuildings = [
-                        ...towers.filter(t => t.team !== this.team && t.isKingTower === false), // Go for Princess first
-                        ...buildings.filter(b => b.team !== this.team)
-                    ];
-                    this.findTarget(enemyBuildings); // Find closest building
-                    
-                    if (!this.target) {
-                        // If no princess or buildings, go for King
-                        this.target = towers.find(t => t.team !== this.team && t.isKingTower === true);
-                    }
-                }
-            }
-            
+            // 1. Find a target in aggro range
+            const allTargets = [...units, ...towers, ...buildings];
+            this.findTarget(allTargets); // This will set this.target if an enemy is in aggroRange
+
+            // 2. Cooldowns
             if (this.attackCooldown > 0) {
                 this.attackCooldown -= 1000 / 60;
             }
             
+            // 3. Logic: Attack, Chase, or Walk to Bridge
             if (this.target && this.target.hp > 0) {
+                // We have a valid enemy target
                 const distance = getDistance(this, this.target);
                 if (distance <= this.attackRange) {
+                    // In attack range
                     this.element.classList.add('is-attacking');
                     this.element.classList.remove('is-walking');
                     if (this.attackCooldown <= 0) {
@@ -386,51 +375,60 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.attackCooldown = this.attackSpeed;
                     }
                 } else {
+                    // Out of range, chase the target
                     this.element.classList.add('is-walking');
                     this.element.classList.remove('is-attacking');
-                    this.move();
+                    this.move(this.target); // Pass the target to move
                 }
             } else {
-                 this.element.classList.remove('is-walking');
+                 // No target in range. Walk to the bridge and wait.
                  this.element.classList.remove('is-attacking');
+                 this.element.classList.add('is-walking');
+                 const riverY = gameContainer.offsetHeight / 2;
+                 const bridgeDest = { 
+                     x: this.laneX, 
+                     y: (this.team === 'player' ? riverY + 35 : riverY - 35) // Stop just before bridge
+                 };
+                 this.move(bridgeDest); // Pass the bridge coordinate to move
             }
         }
         
-        // --- NEW: PATHFINDING LOGIC ---
-        move() {
-            if (!this.target) return;
+        // --- PATHFINDING LOGIC ---
+        move(destination) {
+            if (!destination) return; // Stop if no target AND no destination
 
             const riverY = gameContainer.offsetHeight / 2;
             let destX, destY;
 
             // Check if we are on our side of the river
             const onOurSide = (this.team === 'player' && this.y > riverY) || (this.team === 'enemy' && this.y < riverY);
-            // Check if target is on our side
-            const targetOnOurSide = (this.target.y > riverY && this.team === 'player') || (this.target.y < riverY && this.team === 'enemy');
+            
+            // Check if destination is an entity (has HP) or just a coordinate
+            const isEntity = destination.hp !== undefined;
+            
+            let targetDest = destination; // Default to the passed destination
 
-            if (onOurSide) {
-                // We are on our side
-                if (targetOnOurSide) {
-                    // Target is also on our side (e.g., enemy unit). Go straight for it.
-                    destX = this.target.x;
-                    destY = this.target.y;
-                } else {
-                    // Target is across the river. We must go to our bridge first.
-                    destX = this.laneX; // Go to our lane's X
-                    destY = riverY; // Go to the river
+            if (isEntity) {
+                // It's an enemy. Check if it's across the river
+                const targetOnOurSide = (destination.y > riverY && this.team === 'player') || (destination.y < riverY && this.team === 'enemy');
+                
+                if (onOurSide && !targetOnOurSide) {
+                     // We are on our side, but target is across. Go to bridge.
+                    targetDest = { x: this.laneX, y: riverY };
                 }
-            } else {
-                // We are on the enemy side. Go directly for the target.
-                destX = this.target.x;
-                destY = this.target.y;
             }
+            // If it's not an entity, it's the 'bridgeDest' coordinate, so we just move to it.
 
-            const dx = destX - this.x;
-            const dy = destY - this.y;
+            const dx = targetDest.x - this.x;
+            const dy = targetDest.y - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             // Stop moving if we're at the destination (prevents jittering)
             if (distance < this.speed) {
+                // If we arrived at the bridge (our default dest), just stop walking
+                if (!isEntity) {
+                     this.element.classList.remove('is-walking');
+                }
                 return;
             }
 
@@ -517,6 +515,44 @@ document.addEventListener('DOMContentLoaded', () => {
             element.className = `unit ${team} giant`;
             gameWorld.appendChild(element);
             super(id, team, 700, element, x, y, stats);
+        }
+
+        // --- OVERRIDE UPDATE FOR GIANT ---
+        // Giants don't stop at the bridge. They go for buildings.
+        update(gameTime) {
+            if (this.hp <= 0) return;
+
+            // 1. Giant ALWAYS targets buildings.
+            if (!this.target || this.target.hp <= 0) {
+                const allTargets = [...towers, ...buildings];
+                this.findTarget(allTargets); // This only finds buildings due to targetType
+            }
+            
+            if (this.attackCooldown > 0) {
+                this.attackCooldown -= 1000 / 60;
+            }
+            
+            if (this.target && this.target.hp > 0) {
+                const distance = getDistance(this, this.target);
+                if (distance <= this.attackRange) {
+                    // In attack range
+                    this.element.classList.add('is-attacking');
+                    this.element.classList.remove('is-walking');
+                    if (this.attackCooldown <= 0) {
+                        this.attack();
+                        this.attackCooldown = this.attackSpeed;
+                    }
+                } else {
+                    // Out of range, move to target
+                    this.element.classList.add('is-walking');
+                    this.element.classList.remove('is-attacking');
+                    this.move(this.target); // Pass the target to move
+                }
+            } else {
+                 // No target
+                 this.element.classList.remove('is-walking');
+                 this.element.classList.remove('is-attacking');
+            }
         }
     }
 
@@ -729,7 +765,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNextCardUI() {
         if (playerDeck.length > 0) {
             const nextCard = playerDeck[0];
-            // **FIXED TYPO HERE**
             const cardType = nextCard.type === 'unit' ? nextCard.unitType : (nextCard.type === 'building' ? nextCard.unitType : nextCard.spellType);
             
             nextCardPreview.className = 'next-card-preview-box'; 
@@ -1007,10 +1042,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         runEnemyAI();
         towers.forEach(tower => tower.update(gameTime));
-        // **FIXED TYPO HERE**
         buildings.forEach(b => b.update(gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
-        projectiles.forEach(projectile => projectile.update());
+allProjectiles.forEach(projectile => projectile.update());
 
         requestAnimationFrame(gameLoop);
     }
