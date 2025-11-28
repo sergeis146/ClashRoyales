@@ -1044,7 +1044,11 @@ document.addEventListener('DOMContentLoaded', () => {
         towers.forEach(tower => tower.update(gameTime));
         buildings.forEach(b => b.update(gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
-allProjectiles.forEach(projectile => projectile.update());
+        
+        // **** THIS IS THE BUG FIX ****
+        // It was 'allProjectiles' and was missing a period.
+        projectiles.forEach(projectile => projectile.update());
+        // *****************************
 
         requestAnimationFrame(gameLoop);
     }
