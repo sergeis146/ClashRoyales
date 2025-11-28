@@ -355,10 +355,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!this.target) {
                     // Default target: nearest enemy building/tower
                     const enemyBuildings = [
-                        ...towers.filter(t => t.team !== this.team),
+                        ...towers.filter(t => t.team !== this.team && t.isKingTower === false), // Go for Princess first
                         ...buildings.filter(b => b.team !== this.team)
                     ];
                     this.findTarget(enemyBuildings); // Find closest building
+                    
+                    if (!this.target) {
+                        // If no princess or buildings, go for King
+                        this.target = towers.find(t => t.team !== this.team && t.isKingTower === true);
+                    }
                 }
             }
             
@@ -663,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('button');
             card.className = 'card';
             
-            const cardType = cardData.type === 'unit' ? cardData.unitType : cardData.spellType;
+            const cardType = cardData.type === 'unit' ? cardData.unitType : (cardData.type === 'building' ? cardData.unitType : cardData.spellType);
             card.classList.add(`card-${cardType.toLowerCase()}`);
 
             if (index === selectedCardIndex) {
@@ -688,10 +693,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNextCardUI() {
         if (playerDeck.length > 0) {
             const nextCard = playerDeck[0];
-            const cardType = nextCard.type === 'unit' ? nextCard.unitType : nextCard.spellType;
+            // **FIXED TYPO HERE**
+            const cardType = nextCard.type === 'unit' ? nextCard.unitType : (nextCard.type === 'building' ? nextCard.unitType : nextCard.spellType);
             
             nextCardPreview.className = 'next-card-preview-box'; 
-            nextCardPreview.classList.add(`card-${cardType.toLowerCase()}`);
+            if (cardType) {
+                 nextCardPreview.classList.add(`card-${cardType.toLowerCase()}`);
+            }
 
             nextCardPreview.innerHTML = `
                 <div class="card-cost-small">${nextCard.cost}</div>
@@ -741,8 +749,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Placement Validation ---
         let invalidPlacement = false;
-        // 1. Can't place on enemy side
-        if (y < riverY) {
+        // 1. Can't place on enemy side (spells are okay)
+        if (y < riverY && selectedCardData.type !== 'spell') {
             invalidPlacement = true;
         }
         // 2. Can't place buildings on river/bridge
@@ -822,7 +830,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (target.team !== team && target.hp > 0) {
                 const distance = getDistance({x, y}, target);
                 if (distance <= damageRadius) {
-                    target.takeDamage(damage);
+                    // Arrows are especially good vs swarms
+                    let bonusDamage = (target instanceof Goblins) ? 40 : 0;
+                    target.takeDamage(damage + bonusDamage);
                 }
             }
         });
@@ -908,11 +918,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const y = enemyKing.y + 70;
             
             if (cardData.type === 'spell') {
-                const playerTargets = [...towers, ...buildings].filter(t => t.team === 'player' && t.hp > 0);
+                const playerTargets = [...units, ...buildings, ...towers].filter(t => t.team === 'player' && t.hp > 0 && !t.isKingTower);
                 let target = playerTargets[Math.floor(Math.random() * playerTargets.length)];
+                if (!target) {
+                    target = towers.find(t => t.id === 'player-king');
+                }
                 if(target) {
                     if(cardData.spellType === 'Fireball') castFireball(target.x, target.y, 'enemy');
-                    if(cardData.spellType === 'Arrows') castArrows(target.x, target.y, 'enemy');
+                    if(cardData.spellType === 'Arrows') castArrows(target.x, 'enemy');
                 }
             } else if (cardData.type === 'building') {
                 spawnBuilding(cardData.unitType, 'enemy', x, y);

@@ -208,6 +208,7 @@ body {
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
+    background-clip: padding-box; 
 }
 .unit {
      border-radius: 50%; /* Units are round */
@@ -231,7 +232,7 @@ body {
 }
 
 /* ==================================
-== YOUR FILE PATHS ARE NOW LIVE! ==
+== ART IS NOW IMPLEMENTED! ==
 ==================================
 */
 .unit.knight {
@@ -258,10 +259,6 @@ body {
     width: 30px; 
     height: 30px;
     background-image: url('assets/goblins-sprite.png');
-}
-.unit.valkyrie { /* We don't have this card, but left the style */
-    width: 42px; 
-    height: 42px;
 }
 .building.canon {
     width: 50px;
@@ -343,7 +340,7 @@ body {
     background: #f1c40f;
     border-radius: 50%;
     z-index: 50;
-    transition: transform 0.15s linear;
+    transition: transform 0.1s linear;
     box-shadow: 0 0 5px #f1c40f;
 }
 .projectile.canon-ball {
@@ -496,9 +493,8 @@ body {
     justify-content: space-between;
     transition: transform 0.2s ease, border-color 0.2s ease;
     color: white;
-    /* Card art is now a background image! */
-    background-size: cover;
-    background-position: center;
+    /* Card art is now applied to the .card-art div, not here */
+    background-image: none;
 }
 .card:hover {
     transform: translateY(-10px);
@@ -538,7 +534,6 @@ body {
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
-    /* This empty div will show the card's background-image */
 }
 .card-name {
     font-family: var(--font-ui);
@@ -553,39 +548,40 @@ body {
 }
 
 /* ========================================
-== YOUR FILE PATHS ARE NOW LIVE! ==
+== ART IS NOW IMPLEMENTED! ==
 ========================================
 */
-.card-knight,
-#next-card-preview.card-knight {
+/* --- Card Art --- */
+.card-knight .card-art,
+#next-card-preview.card-knight .card-art-small {
     background-image: url('assets/knight-card.png');
 }
-.card-archer,
-#next-card-preview.card-archer {
+.card-archer .card-art,
+#next-card-preview.card-archer .card-art-small {
     background-image: url('assets/archer-card.png');
 }
-.card-giant,
-#next-card-preview.card-giant {
+.card-giant .card-art,
+#next-card-preview.card-giant .card-art-small {
     background-image: url('assets/giant-card.png');
 }
-.card-fireball,
-#next-card-preview.card-fireball {
+.card-fireball .card-art,
+#next-card-preview.card-fireball .card-art-small {
     background-image: url('assets/fireball-card.png');
 }
-.card-mpekka,
-#next-card-preview.card-mpekka {
+.card-mpekka .card-art,
+#next-card-preview.card-mpekka .card-art-small {
     background-image: url('assets/mpekka-card.png');
 }
-.card-goblins,
-#next-card-preview.card-goblins {
+.card-goblins .card-art,
+#next-card-preview.card-goblins .card-art-small {
     background-image: url('assets/goblins-card.png');
 }
-.card-canon,
-#next-card-preview.card-canon {
+.card-canon .card-art,
+#next-card-preview.card-canon .card-art-small {
     background-image: url('assets/canon-card.png');
 }
-.card-arrows,
-#next-card-preview.card-arrows {
+.card-arrows .card-art,
+#next-card-preview.card-arrows .card-art-small {
     background-image: url('assets/arrows-card.png');
 }
 
