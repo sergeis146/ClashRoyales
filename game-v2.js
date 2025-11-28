@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check if we are on our side of the river
             const onOurSide = (this.team === 'player' && this.y > riverY) || (this.team === 'enemy' && this.y < riverY);
             // Check if target is on our side
-            const targetOnOurSide = (this.target.team === 'player' && this.target.y > riverY) || (this.target.team === 'enemy' && this.target.y < riverY);
+            const targetOnOurSide = (this.target.y > riverY && this.team === 'player') || (this.target.y < riverY && this.team === 'enemy');
 
             if (onOurSide) {
                 // We are on our side
@@ -793,6 +793,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCardData.type === 'building' && y > bridgeYStart && y < bridgeYEnd) {
              invalidPlacement = true;
         }
+        // 3. Can't place on grass
+        if (x < gameContainer.offsetWidth * 0.15 || x > gameContainer.offsetWidth * 0.85) {
+            invalidPlacement = true;
+        }
+
 
         if (invalidPlacement) {
             playSound('error', 'C3');
@@ -1002,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         runEnemyAI();
         towers.forEach(tower => tower.update(gameTime));
-        // **FIX: Corrected typo from 'Two-ColumnPane.gameTime' to 'gameTime'**
+        // **FIXED TYPO HERE**
         buildings.forEach(b => b.update(gameTime)); // Update buildings
         units.forEach(unit => unit.update(gameTime));
         projectiles.forEach(projectile => projectile.update());
