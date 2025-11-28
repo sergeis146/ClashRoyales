@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateNextCardUI() {
         if (playerDeck.length > 0) {
             const nextCard = playerDeck[0];
-            // **FIX: Corrected typo from 'nextC[ard...' to 'nextCard...'**
+            // **FIXED TYPO HERE**
             const cardType = nextCard.type === 'unit' ? nextCard.unitType : (nextCard.type === 'building' ? nextCard.unitType : nextCard.spellType);
             
             nextCardPreview.className = 'next-card-preview-box'; 
