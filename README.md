@@ -1,1 +1,1 @@
-# ClashRoyales
+# ClashRoyale

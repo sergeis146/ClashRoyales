@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.hp <= 0) return;
 
             // 1. Find a target
-            if (!this.target || this.target.hp <= 0) {
+            if (!this.target || this.target.hp <= 0 || getDistance(this, this.target) > this.aggroRange) {
                 const allTargets = [...units, ...towers, ...buildings];
                 this.findTarget(allTargets); // This will set this.target if an enemy is in aggroRange
                 
@@ -791,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nextCardPreview.innerHTML = `
                 <div class="card-cost-small">${nextCard.cost}</div>
                 <div class="card-art-small"></div>
-                <div class.card-name-small">${nextCard.name}</div>
+                <div class="card-name-small">${nextCard.name}</div>
             `;
         } else {
             nextCardPreview.innerHTML = '';
