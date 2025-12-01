@@ -353,10 +353,26 @@ document.addEventListener('DOMContentLoaded', () => {
         update(gameTime) {
             if (this.hp <= 0) return;
 
-            // 1. Find a target in aggro range
-            const allTargets = [...units, ...towers, ...buildings];
-            this.findTarget(allTargets); // This will set this.target if an enemy is in aggroRange
-
+            // 1. Find a target
+            if (!this.target || this.target.hp <= 0) {
+                const allTargets = [...units, ...towers, ...buildings];
+                this.findTarget(allTargets); // This will set this.target if an enemy is in aggroRange
+                
+                if (!this.target) {
+                    // Default target: nearest enemy building/tower
+                    const enemyBuildings = [
+                        ...towers.filter(t => t.team !== this.team && t.isKingTower === false), // Go for Princess first
+                        ...buildings.filter(b => b.team !== this.team)
+                    ];
+                    this.findTarget(enemyBuildings); // Find closest building
+                    
+                    if (!this.target) {
+                        // If no princess or buildings, go for King
+                        this.target = towers.find(t => t.team !== this.team && t.isKingTower === true);
+                    }
+                }
+            }
+            
             // 2. Cooldowns
             if (this.attackCooldown > 0) {
                 this.attackCooldown -= 1000 / 60;
@@ -775,7 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nextCardPreview.innerHTML = `
                 <div class="card-cost-small">${nextCard.cost}</div>
                 <div class="card-art-small"></div>
-                <div class="card-name-small">${nextCard.name}</div>
+                <div class.card-name-small">${nextCard.name}</div>
             `;
         } else {
             nextCardPreview.innerHTML = '';
@@ -1046,7 +1062,6 @@ document.addEventListener('DOMContentLoaded', () => {
         units.forEach(unit => unit.update(gameTime));
         
         // **** THIS IS THE BUG FIX ****
-        // It was 'allProjectiles' and was missing a period.
         projectiles.forEach(projectile => projectile.update());
         // *****************************
 
